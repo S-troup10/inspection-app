@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Revisions{% endblock %}
+
+{% block content %}
+<section class="customer-section">
+    <h2 class="section-title">Revisions</h2>
+
+    <!-- Add Customer Button -->
+    <div class="add-customer-container">
+        <a href="/revisions-Add" class="add-btn">Add Revisions</a>
+    </div>
+
+    <div class="customer-list">
+        {% if customers %}
+            <table class="customer-table">
+                <thead>
+                    <tr>
+                        <th>inspection</th>
+                        <th>date</th>
+                        
+                        <th>detail</th>
+                        <th>issued_by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for revision in revisions %}
+                        <tr>
+                            <td>{{revision.inspection}}</td>
+                                
+                            <td>{{ revision.date }}</td>
+                           
+                            <td>
+                                {{revision.detail}}
+                            </td>
+                            <td>
+                                {{revision.issued_by}}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No revisions found.</p>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+    
+</style>
+{% endblock %}

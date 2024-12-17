@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inspection Report</title>
+    <link rel="stylesheet" href="{{ css }}" />
+  </head>
+  <body>
+    <div class="content">
+        <!-- Title Page -->
+        <div class="page">
+          <div class="title-page">
+            <div class="title-header">
+              <div class="title-logo">
+                <img src="{{ logo }}" alt="Customer Logo" />
+              </div>
+              <div class="company-contact-info">
+                <p class="contact-email">0404 280 928</p>
+                <p class="contact-address">unit 8B 13 Hartley Drive</p>
+                <p class="contact-address">Thornton NSW</p>
+              </div>
+            </div>
+        
+            <!-- Divider -->
+            <hr class="title-divider" />
+            
+            <div class="title-summary">
+              <h1 class="main-heading">{{inspection_header.title}}</h1>
+              <div class="title-header-image">
+                <img src="{{ inspection_header.image_url }}" alt="Inspection Image" />
+              </div>
+              <div class="customer-info">
+                <p class="description">{{ inspection_header.summary }}</p>
+              </div>
+            </div>
+        
+
+
+            <div class="revisions-table">
+              <h3>Revisions</h3>
+              <table class="table">
+                  <thead>
+                      <tr>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th>Detail</th>
+                          <th>Issued By</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                    {% for revision in revisions %}
+                    <tr>
+                        <td>{{ revision.date }}</td>
+                        <td>{{ revision.status }}</td>
+                        <td>{{ revision.detail }}</td>
+                        <td>{{ revision.issued_by }}</td>
+                    </tr>
+                    {% endfor %}
+                      
+                  </tbody>
+              </table>
+          </div>
+
+
+
+          </div>
+        
+          <div class="footer">Report by HV Engineers Pty Ltd</div>
+        </div>
+         
+
+
+
+        
+        <div class="page-break"></div>
+
+      <!-- Inspection Table Page -->
+      <div class="page">
+        <div class="header">
+          <img src="{{ logo }}" alt="Customer Logo" />
+          <h1>List of Priorities</h1>
+          <div class="customer-info">
+            <h2>{{ customer.name }}</h2>
+            <p>{{ inspection_header.description }}</p>
+            <p>{{ inspection_header.date }}</p>
+          </div>
+        </div>
+        <div class="inspection-table">
+          <h3>Inspection Summary</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Unit</th>
+                <th>Item</th>
+                <th>Action Required</th>
+                <th>Observations</th>
+                <th>recommendations</th>
+                <th>Time Ranking</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>
+                <td>{{ row.area }}</td>
+                <td>{{ row.unit }}</td>
+                <td>{{ row.item }}</td>
+                <td>{{ 'Yes' if row.action_required else 'No' }}</td>
+                <td>{{ row.observations }}</td>
+                <td>{{ row.recommendations }}</td>
+                <td>{{ row.time_ranking }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="footer"></div>
+      </div>
+      <div class="page-break"></div>
+
+      <!-- Detailed Inspection Pages -->
+      {% for row in rows %}
+      <div class="page">
+        <div class="header">
+          <img src="{{ logo }}" alt="Customer Logo" />
+          <h1 class="inspection-detail">Inspection Report - Detail Sheet</h1>
+          <div class="customer-info">
+            <h2>{{ customer.name }}</h2>
+            <p>{{ inspection_header.description }}</p>
+            <p>{{ inspection_header.date }}</p>
+          </div>
+        </div>
+        <div class="inspection-details">
+          <div class="text">
+            <h3>Inspection Details for: {{ row.item }}</h3>
+            <p>
+              <strong>Action Required:</strong> {{ 'Yes' if row.action_required
+              else 'No' }}
+            </p>
+            <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
+            <p><strong>Area:</strong> {{ row.area }}</p>
+            <p><strong>Unit:</strong> {{ row.unit }}</p>
+            <p><strong>Item:</strong> {{ row.item }}</p>
+            <p><strong>Probability:</strong> {{ row.probability }}</p>
+            <p><strong>Consequence:</strong> {{ row.consequence }}</p>
+            <p><strong>Observations:</strong> {{ row.observations }}</p>
+            <p><strong>Recommendations:</strong> {{ row.recommendations }}</p>
+          </div>
+          <figure>
+            {% if row.image_url %}
+
+            <figcaption>Caption: {{ row.picture_caption }}</figcaption>
+            <img src="{{ row.image_url }}" alt="Inspection Image" />
+
+            {% endif %}
+          </figure>
+        </div>
+
+        <div class="footer">Report by HV Engineers Pty Ltd</div>
+      </div>
+      <div class="page-break"></div>
+      {% endfor %}
+    </div>
+  </body>
+</html>

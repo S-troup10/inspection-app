@@ -1,0 +1,43 @@
+{
+    "name": "HV Engineers Inspection App",
+    "short_name": "InspectApp",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#007bff",
+    "description": "An app to manage customer data, inspections, and generate PDF reports. for HV Engineers",
+    "icons": [
+      {
+        "src": "static/images/hv.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "static/images/hv.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      },
+
+
+    {
+        "src": "/static/images/appicon.png",
+        "sizes": "192x192",
+        "type": "image/png"
+    },
+    {
+        "src": "/static/images/appicon.png",
+        "sizes": "512x512",
+        "type": "image/png"
+    }
+
+
+
+
+    ],
+    "cache": [
+      "static/images/hv.png",
+      "static/css/style.css",
+      "static/css/reportStyle.css"
+    ]
+  }
+  
