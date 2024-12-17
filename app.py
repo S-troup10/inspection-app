@@ -460,7 +460,7 @@ def generate_report(inspection_id):
 
         # Display the PDF inline in the browser
         
-        return send_file(pdf_stream, as_attachment=False, mimetype='application/pdf')
+        return send_file(pdf_stream, as_attachment=True, mimetype='application/pdf')
         
 
     except Exception as e:
@@ -470,17 +470,6 @@ def generate_report(inspection_id):
 
 
 
-
-
-
-    
-
-
-
-
-@app.route('/button6')
-def button6():
-    return "Button 6 clicked!"
 
 
 if __name__ == '__main__':
