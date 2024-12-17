@@ -3,7 +3,7 @@ const CACHE_NAME = 'hv-engineers-cache-v1';
 
 // List of assets to cache
 const CACHE_ASSETS = [
-    '/',
+    
     '/static/css/style.css',
     '/static/css/reportStyle.css',
     '/static/images/hv.png',
@@ -34,13 +34,28 @@ const CACHE_ASSETS = [
 
 // Install event: cache the specified assets
 self.addEventListener('install', (event) => {
+    console.log('Service Worker: Install Event');
+
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('Service Worker: Caching assets');
-            return cache.addAll(CACHE_ASSETS);
+            console.log('Service Worker: Caching assets...');
+            // Debug each asset being cached
+            return Promise.all(
+                CACHE_ASSETS.map((asset) => {
+                    console.log(`Service Worker: Attempting to cache ${asset}`);
+                    return cache.add(asset).catch((error) => {
+                        console.error(`Service Worker: Failed to cache ${asset}`, error);
+                    });
+                })
+            );
+        }).then(() => {
+            console.log('Service Worker: Caching completed');
+        }).catch((error) => {
+            console.error('Service Worker: Cache installation failed', error);
         })
     );
 });
+
 
 // Activate event: clean up old caches
 self.addEventListener('activate', (event) => {
@@ -73,3 +88,4 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
+
