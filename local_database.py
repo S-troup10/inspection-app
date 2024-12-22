@@ -283,6 +283,9 @@ def update(table_name, data, conditions):
     Returns:
         None
     """
+    if data.get('image_url'):
+        local_path = process_file(data['image_url'])
+        data['image_url'] = local_path
     # Safely quote table and column names to avoid conflicts with reserved keywords
     table_name = f'"{table_name}"'
     set_clause = ', '.join(f'"{key}" = ?' for key in data.keys())
