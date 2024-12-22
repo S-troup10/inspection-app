@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, redirect, flash, url_for, send_file
-import io
+import io, os
 import weasyprint
 import local_database as local
 
 
 
-
+# ipad password 431619
 
 
 app = Flask(__name__)
@@ -39,28 +39,36 @@ def edit_customer(customer_id):
    
         # Fetch customer data by ID
         response = local.fetch('Customer', {'customer_id': customer_id})
-        print(response)
-        customer_data = response if response else print('erroe in getting customer datat')
-    
+        
+        customer_data = response if response else None
+        
+        customer_data = customer_data[0]
 
         if not customer_data:
-            return "Customer not found", 404
+            flash('customer not found')
+            return redirect('/customer')
 
         if request.method == 'POST':
             # Handle form submission to update customer data
             name = request.form.get('name')
             site = request.form.get('site')
+            
+            update_data = {'customer_id': customer_id, 'name': name, 'site': site}
 
-            update_data = {'name': name, 'site': site}
-            status = local.update('Customer', update_data, {'customer_id': customer_id})
-            print(status)
-            if status:
-                flash('customer edited sucsessfully', 'sucsess')
-                return redirect('/customer')  # Redirect back to customer view page
-            else:
-                flash('customer edit failed', 'fail')
-                return redirect('/customer')  # Redirect back to customer view page
+            picture = request.files.get('picture')
 
+            if picture and picture.filename:
+                print('user uploaded a file')
+                update_data['image_url'] = picture
+                
+            
+            
+            local.update('Customer', update_data, {'customer_id': customer_id})
+            print(update_data)
+            
+        
+            flash('customesr edited sucsessfully', 'sucsess')
+            return redirect('/customer')  # Redirect back to customer view page
         # Render the edit page with preloaded data
         
         return render_template('customerEdit.html', customer=customer_data)
@@ -161,19 +169,24 @@ def upload_inspection_detail(inspection_id):
         flash(f"An error occurred: {e}", "error")
         return redirect(f'/inspection-Details/{inspection_id}')
 
+
+
 @app.route('/inspectionDetail-Edit/<int:detail_id>', methods=['GET', 'POST'])
 def edit_inspection_detail(detail_id):
     # Fetch inspection data by ID
     response = local.fetch('Inspection_Details', {'detail_id': detail_id})  # Assuming response is a dict
     
+    inspection_id = response[0].get('inspection_id')
+    
     # Check if the response contains the required data
-    if not response or 'data' not in response or not response['data']:
-        return "Inspection not found", 404
+    if not response:
+        flash('no inspection found')
 
-    inspection_data = response['data'][0]  # Access the first record in the 'data' list
+    inspection_data = response[0]  # Access the first record in the 'data' list
 
     if request.method == 'POST':
         # Handle form submission to update inspection data
+        
         area = request.form.get('area')
         item = request.form.get('item')
         action_required = request.form.get('action_required')
@@ -189,6 +202,7 @@ def edit_inspection_detail(detail_id):
         # Prepare data for update
         update_data = {
             'area': area,
+            'inspection_id' : inspection_id,
             'item': item,
             'action_Required': action_required,
             'probability': probability,
@@ -198,15 +212,21 @@ def edit_inspection_detail(detail_id):
             'observations': observations,
             'recommendations': recommendations,
             'picture_Caption': picture_caption,
+            
             'display_On_Report': display_on_report,
         }
+        picture = request.files.get('picture')
+
+        if picture and picture.filename:
+            update_data['image_url'] = picture
 
         # Update the inspection record
-        local.fetch('Inspection_Details', update_data, {'detail_id':detail_id})
-        return redirect('/inspections')  # Redirect to the customer view page
+        local.update('Inspection_Details', update_data, {'detail_id':detail_id})
+        flash('data inserted sucsessfuly')
+        return redirect(f'/inspection-Details/{inspection_id}')  # Redirect to the customer view page
 
     # Render the edit page with preloaded data
-    return render_template('customerEdit.html', inspection=inspection_data)
+    return render_template('inspectionDetailEdit.html', inspection=inspection_data)
 
 
 
@@ -243,7 +263,7 @@ def inspection_summary():
 def Inspection_add():
     #pass a table of all the customers to display the name of the customers in the form
     customers = local.fetch('Customer')
-    print(customers)
+    
     return render_template('/inspectionsAdd.html', customers=customers)
 
 @app.route("/upload-Inspection", methods=["POST"])
@@ -300,12 +320,13 @@ def edit_inspection(inspection_id):
         flash('Inspection not found', 'error')
         return redirect('/inspections')
 
-    inspection_data = response
-
+    inspection_data = response[0]
+    print(inspection_data)
     # Fetch customers for the dropdown
     customers = local.fetch('Customer')
 
     if request.method == 'POST':
+        
         description = request.form.get('description')
         summary = request.form.get('summary')
         customer_id = request.form.get('customer')
@@ -319,6 +340,11 @@ def edit_inspection(inspection_id):
             'date': date,
             'title' : title
         }
+        picture = request.files.get('picture')
+
+        if picture and picture.filename:
+            print('user uploaded a file')
+            update_data['image_url'] = picture
 
         local.update('Inspection_Header', update_data, {'inspection_id': inspection_id})
         flash('Inspection updated successfully!', 'success')
@@ -330,9 +356,19 @@ def edit_inspection(inspection_id):
 
 @app.route('/select-Inspections', methods=['GET', 'POST'])
 def select_inspections():
-    customer = local.fetch('Customer')
+    customers = local.fetch('Customer')
     inspection_headers = None
     selected_customer_id = None
+    
+    customers_with_inspections = []
+    
+    for customer in customers:
+        #check if it has an inspection associated with it
+        inpection_count = local.fetch('Inspection_Header', {'customer_id': customer.get('customer_id')})
+       
+        if len(inpection_count) > 0 :
+            customers_with_inspections.append(customer)
+            
     
 
     if request.method == 'POST':
@@ -341,17 +377,30 @@ def select_inspections():
         if selected_customer_id:
             
             inspection_headers = local.fetch('Inspection_Header', {'customer_id': selected_customer_id})
+            
+            
+            
+            
+            filtered_inspections = []
             for inspection in inspection_headers:
-                count = len(local.fetch('Inspection_Details', {'inspection_id':inspection.get('inspection_id')}))
-                inspection['details_count'] = count
-
-
+                count = len(local.fetch('Inspection_Details', {'inspection_id': inspection.get('inspection_id')}))
+                
+                if count > 0:  
+                    inspection['details_count'] = count
+                    filtered_inspections.append(inspection)
+            
+            # Update inspection headers with filtered list
+            inspection_headers = filtered_inspections
+                
+        
     return render_template(
         '/selectPrint.html',
-        customers=customer,
+        customers=customers_with_inspections,
         inspection_data=inspection_headers,
-        selected_customer_id=selected_customer_id
+        selected_customer_id=selected_customer_id,
+       # Pass the flag to the template
     )
+
 
 
 
@@ -402,12 +451,12 @@ def generate_report(inspection_id):
 
             # Fetch revisions after inserting new revision
             revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-            print('Fetched Revisions:', revisions)
+            
 
 
         # Fetch revisions regardless of POST
         revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-        print('revisions:', revisions)
+        
 
         # Fetch inspection header
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
@@ -425,7 +474,7 @@ def generate_report(inspection_id):
 
         # Fetch and sort inspection details
         inspection_details = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-        inspection_details.sort(key=lambda x: x.get('time_ranking', 0))
+        #inspection_details.sort(key=lambda x: x.get('time_ranking', 0))
 
         # Update image URLs
         logo = 'hv.png'
@@ -456,17 +505,22 @@ def generate_report(inspection_id):
         # Generate and return the PDF
         html_content = render_template('report.html', **report_data)
         pdf = weasyprint.HTML(string=html_content).write_pdf()
-        pdf_stream = io.BytesIO(pdf)
-
+        #pdf_stream = io.BytesIO(pdf)
         # Display the PDF inline in the browser
-        
-        return send_file(pdf_stream, as_attachment=True, mimetype='application/pdf')
-        
+        pdf_filename = f'inspection_report_{inspection_id}.pdf'
+        pdf_filepath = os.path.join('./static/pdf/', pdf_filename)
+        os.makedirs(os.path.dirname(pdf_filepath), exist_ok=True)
+        with open(pdf_filepath, 'wb') as pdf_file:
+            pdf_file.write(pdf)
+
+        # Flash a message with the download link
+        pdf_url = url_for('static', filename=f'pdf/{pdf_filename}', _external=True)
+        flash(f"Report generated successfully. <a href='{pdf_url}' target='_blank'>Download the PDF</a>", 'success')
+        return redirect('/')
 
     except Exception as e:
         flash(f"Error: {str(e)}")
-        return redirect('/select-Inspections')
-
+        return redirect('/')
 
 
 
