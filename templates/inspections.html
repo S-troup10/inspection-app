@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}View Inspection{% endblock %}
+
+{% block content %}
+<section class="inspection-section">
+    <h2 class="section-title">Inspections List</h2>
+
+    <!-- Add Inspection Button -->
+    <div class="add-inspection-container">
+        <a href="/inspection-Add" class="add-btn">Add Inspection</a>
+    </div>
+
+    <div class="inspection-list">
+        {% if inspections %}
+            <table class="inspection-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Customer</th>
+                        <th>Description</th>
+                        <th>Date</th>
+                        <th>Summary</th>
+                        <th>Edit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inspection in inspections %}
+                        <tr onclick="redirectToPrintReports({{ inspection.inspection_id }})">
+                            <td>{{ inspection.title }}</td>
+                            <td>{{ inspection.name }}</td>
+                            <td>{{ inspection.description }}</td>
+                            <td>{{ inspection.date }}</td>
+                            <td>{{ inspection.summary }}</td>
+                            <td>
+                                <a href="/inspection-Edit/{{ inspection.inspection_id }}" class="edit-btn">Edit</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No inspections found.</p>
+        {% endif %}
+    </div>
+    <script>
+        // Redirect to print reports page when a row is clicked
+        function redirectToPrintReports(inspectionId) {
+            window.location.href = `/inspection-Details/${inspectionId}`;
+        }
+    </script>
+</section>
+{% endblock %}
