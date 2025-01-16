@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Inspection Details{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Add Inspection Details</h2>
+
+    {% if error_message %}
+        <div class="error-message">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {% if request.args.get('status') == 'success' %}
+        <div class="success-message">Inspection details added successfully!</div>
+    {% endif %}
+
+    <form id="inspectionForm" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="area">Area:</label>
+            <input type="text" id="area" name="area" required>
+        </div>
+
+        <div class="form-group">
+            <label for="item">Item:</label>
+            <input type="text" id="item" name="item" required>
+        </div>
+
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="action_required" name="action_required" value="True">
+            <label for="action_required">Action Required</label>
+        </div>
+
+        <div class="form-group">
+            <label>Consequence:</label>
+            <div class="segmented-control">
+                {% for level, value in [('Low', 1), ('Minor', 2), ('Moderate', 3), ('Major', 4)] %}
+                <label>
+                    <input type="radio" name="consequence" value="{{ value }}" data-label="{{ level }}" required>
+                    <span>{{ level }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Time Ranking:</label>
+            <div class="segmented-control">
+                {% for time, value in [('Immediate', 1), ('Under 1 month', 2), ('Under 3 months', 3), ('Under 6 months', 4), ('Under 12 months', 5), ('Under 18 months', 6), ('Over 18 months', 7)] %}
+                <label>
+                    <input type="radio" name="time_ranking" value="{{ value }}" data-label="{{ time }}" required>
+                    <span>{{ time }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Probability:</label>
+            <div class="segmented-control">
+                {% for probability, value in [('Almost Certain', 1), ('Likely', 2), ('Possible', 3), ('Unlikely', 4), ('Very Rare', 5)] %}
+                <label>
+                    <input type="radio" name="probability" value="{{ value }}" data-label="{{ probability }}" required>
+                    <span>{{ probability }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="unit">Unit:</label>
+            <input type="text" id="unit" name="unit">
+        </div>
+
+        <div class="form-group">
+            <label for="observations">Observations:</label>
+            <input type="text" id="observations" name="observations">
+        </div>
+
+        <div class="form-group">
+            <label for="recommendations">Recommendations:</label>
+            <input type="text" id="recommendations" name="recommendations">
+        </div>
+
+        <div class="form-group">
+            <label for="picture_caption">Picture Caption:</label>
+            <input type="text" id="picture_caption" name="picture_caption">
+        </div>
+
+        <div class="form-group">
+            <label for="picture">Upload Picture:</label>
+            <div id="picture-upload-wrapper">
+                <input type="file" id="picture" name="picture" accept="image/*">
+            </div>
+            <img id="picture-preview" src="#" alt="Picture Preview" style="display: none; max-width: 100px;">
+        </div>
+
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="display_picture_on_report" name="display_picture_on_report" value="True">
+            <label for="display_picture_on_report">Display Picture on Report</label>
+        </div>
+
+        <button type="submit" class="submit-btn">Submit</button>
+    </form>
+</div>
+
+<script>
+    // Preview image
+    document.getElementById('picture').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('picture-preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Get current date and time
+    const getCurrentDateTime = () => {
+        const now = new Date();
+        return now.toISOString().slice(0, 19).replace('T', ' ');
+    };
+
+    document.getElementById('inspectionForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        // Extract inspection ID from URL
+        const path = window.location.pathname;
+        const parts = path.split('/');
+        const inspection_id = parts[parts.length - 1];
+
+        // Fetch form values
+        const area = document.getElementById('area').value;
+        const item = document.getElementById('item').value;
+        const action_required = document.getElementById('action_required').checked ? 'Yes' : 'No';
+
+        const probabilityRadio = document.querySelector('input[name="probability"]:checked');
+        const probability = probabilityRadio ? probabilityRadio.dataset.label : null;
+
+        const consequenceRadio = document.querySelector('input[name="consequence"]:checked');
+        const consequence = consequenceRadio ? consequenceRadio.dataset.label : null;
+
+        const timeRankingRadio = document.querySelector('input[name="time_ranking"]:checked');
+        const time_ranking = timeRankingRadio ? timeRankingRadio.dataset.label : null;
+
+        const unit = document.getElementById('unit').value;
+        const observations = document.getElementById('observations').value;
+        const recommendations = document.getElementById('recommendations').value;
+        const picture_caption = document.getElementById('picture_caption').value;
+        const display_on_report = document.getElementById('display_picture_on_report').checked ? 1 : 0;
+        const last_modified = getCurrentDateTime();
+
+        const pictureFile = document.getElementById('picture').files[0];
+        let image_url = null;
+
+        if (pictureFile) {
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                image_url = reader.result;
+                saveInspectionData({ 
+                    inspection_id, 
+                    area, 
+                    item, 
+                    action_required, 
+                    probability, 
+                    consequence, 
+                    time_ranking, 
+                    unit, 
+                    observations, 
+                    recommendations, 
+                    picture_caption, 
+                    display_on_report, 
+                    image_url, 
+                    last_modified 
+                });
+            };
+            reader.readAsDataURL(pictureFile);
+        } else {
+            saveInspectionData({ 
+                inspection_id, 
+                area, 
+                item, 
+                action_required, 
+                probability, 
+                consequence, 
+                time_ranking, 
+                unit, 
+                observations, 
+                recommendations, 
+                picture_caption, 
+                display_on_report, 
+                image_url, 
+                last_modified 
+            });
+        }
+    });
+
+    function saveInspectionData(data) {
+        const dbName = "HV-storage";
+        const storeName = "Inspection_Details";
+
+        const request = indexedDB.open(dbName, 1);
+
+        request.onsuccess = function(event) {
+            const db = event.target.result;
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+
+            const addRequest = store.add(data);
+
+            addRequest.onsuccess = function() {
+                alert("Inspection details added successfully!");
+                window.location.href = "/inspections";
+            };
+
+            addRequest.onerror = function() {
+                alert("Error adding inspection details.");
+            };
+        };
+
+        request.onerror = function() {
+            alert("Error opening database.");
+        };
+    }
+</script>
+{% endblock %}

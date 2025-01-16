@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}View Inspection{% endblock %}
+
+{% block content %}
+<section class="inspection-section">
+    <h2 class="section-title">Inspections List</h2>
+
+    <!-- Add Inspection Button -->
+    <div class="add-inspection-container">
+        <a href="/inspection-Add" class="add-btn">Add Inspection</a>
+    </div>
+
+    <div class="inspection-list" id='table'>
+        
+    </div>
+    <script src="/static/js/table.js"></script>
+<script>
+    // Wait for DOM to load and then call generateTable
+    document.addEventListener('DOMContentLoaded', () => {
+        // Call the function, specifying which columns to include
+        generateTable('HV-storage', 'Inspection_Header', 'table', ['title', 'date', 'description', 'image_url', 'summary', 'inspection_id']);
+    });
+
+    // Add event listener for row clicks
+    document.getElementById('table').addEventListener('click', function(event) {
+        const row = event.target.closest('tr');
+        if (row) {
+            // Find the inspection_id field within the row (assuming it's in the last column)
+            const inspectionId = row.querySelector('td:last-child').textContent;  // Adjust this to select the correct column if needed
+            if (inspectionId) {
+                redirectToPrintReports(inspectionId);
+            }
+        }
+    });
+
+    function redirectToPrintReports(inspectionId) {
+        window.location.href = `/inspection-Details/${inspectionId}`;
+    }
+</script>
+</section>
+{% endblock %}

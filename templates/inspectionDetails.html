@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}View Inspection Details{% endblock %}
+
+{% block content %}
+<section class="customer-section">
+    <h2 class="section-title">Inspection Detail List</h2>
+
+    <!-- Add Inspection Detail Button -->
+    <div class="add-customer-container">
+        <a href="/inspectionDetails-Add/{{inspection_id}}" class="add-btn">Add Inspection Detail</a>
+    </div>
+
+    <div class="customer-list" id="table"></div>
+</section>
+
+<script src="/static/js/table.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Extract the inspection_id from the URL
+        const urlParts = window.location.pathname.split('/');
+        const inspectionId = urlParts[urlParts.length - 1]; // Assumes ID is the last part of the URL
+        //console.log(inspectionId);
+
+        // Generate table
+        generateTable(
+            'HV-storage',
+            'Inspection_Details',
+            'table',
+            [
+                'area', 'item', 'action_required', 
+                 'time_ranking', 'observations', 
+                'recommendations', 'image_url'
+            ],
+            { index: 'inspection_id', value: inspectionId }
+        );
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Choose an Action{% endblock %}
+
+{% block content %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.0/sql-wasm.js"></script>
+
+<section class="action-section">
+    <h2 class="section-title">Choose an Action</h2>
+    <div class="action-buttons">
+        <a href="/customer" class="btn primary-btn">Customer Details</a>
+        <a href="/inspections" class="btn secondary-btn">Inspections</a>
+        <a href="/select-Inspections" class="btn secondary-btn">Print Reports</a>
+    </div>
+</section>
+
+<script src="/static/js/db.js"></script>
+
+
+
+<script>
+    // Register service worker
+    if ('serviceWorker' in navigator && navigator.onLine) {
+        navigator.serviceWorker
+            .register('/static/js/service-worker.js', { scope: '/' })
+            .then(() => {
+                console.log("Service Worker Registered");
+            })
+            .catch((error) => {
+                console.error("Service Worker Registration Failed:", error);
+            });
+    }
+</script>
+<script>
+    window.addEventListener('load', () => {
+        sync_client_with_server();
+
+    });
+
+</script>
+
+
+{% endblock %}

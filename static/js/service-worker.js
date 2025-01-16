@@ -5,82 +5,76 @@ const ITEMS_TO_CACHE = [
   '/customer.html', 
   '/customerAdd.html', 
   '/customerEdit.html', 
-  '/offline.html',
   '/inspectionDetails.html',
   '/inspectionDetailAdd.html',
   '/inspectionDetailEdit.html',
   '/inspections.html',
   '/inspectionsAdd.html',
   '/inspectionsEdit.html',
-  '/selectPrint.html',
-
 
   '/static/manifest.json',
   '/static/css/style.css',
   '/static/images/hv.png',
   '/static/images/icon.png',
   '/static/images/offline.jpg',
-  '/static/js/main.js'
-  
-]
-
+  '/static/js/main.js',
+  '/static/js/db.js',
+  '/static/js/table.js'
+];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) =>{
-            console.log('cache opened')
-            return cache.addAll(ITEMS_TO_CACHE)
-
+        caches.open(CACHE_NAME).then((cache) => {
+            console.log('Cache opened and populated');
+            return cache.addAll(ITEMS_TO_CACHE);
         })
     );
 });
 
 self.addEventListener("activate", (event) => {
     event.waitUntil(
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName); // Delete old caches
+                    }
+                })
+            );
+        }).then(() => {
+            console.log("Cache updated");
+        })
     );
-  });
-
+});
 
 self.addEventListener("fetch", (event) => {
-    console.log('fetch function called');
+    if (event.request.method === "POST") {
+        // Directly fetch POST requests from the network
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
-        caches.match(event.request)
-        .then((cachedResponse) => {
-            if (cachedResponse) {
-                console.log(cachedResponse)
-                return cachedResponse;
-            }
+        caches.match(event.request) // Try to find the resource in the cache first
+            .then((cachedResponse) => {
+                if (cachedResponse) {
+                    // If resource is found in cache, serve it
+                    return cachedResponse;
+                }
 
-            return fetch(event.request)
-            .then((networkResponse) => {
-
-                const responseClone = networkResponse.clone();
-
-                const requestClone = event.request.clone();
-
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(requestClone, responseClone)
-
+                // Otherwise, fetch from network and cache the response
+                return fetch(event.request).then((networkResponse) => {
+                    const responseClone = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                    return networkResponse;
                 });
-
-            return networkResponse
-            });
-        }) 
-        .catch((error) => {
-            console.error('fetch failed, returning offline if avalkiable', error)
-            return caches.match('offline.html')
-        })
-        
-        
-        
+            })
+            .catch((error) => {
+                console.error("Resource not available in cache or network:", error);
+                // Fallback to offline page if all else fails
+                return caches.match('/offline.html');
+            })
     );
 });

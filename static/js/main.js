@@ -1,7 +1,4 @@
-// Inside app.js or main.js (Register the service worker)
 
-
-// Inside main.js or indexedDB.js (for managing IndexedDB)
 let db;
 
 // Open IndexedDB
@@ -32,6 +29,8 @@ const openDB = () => {
         const revisionsStore = db.createObjectStore('revisions', { keyPath: 'id', autoIncrement: true });
         revisionsStore.createIndex('inspection_id', 'inspection_id'); // Foreign key to Inspection_Header
     };
+
+    
 };
 
 
