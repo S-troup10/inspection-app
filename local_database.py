@@ -117,74 +117,7 @@ def initialize_database(db_name=db_name):
 
 
 
-def sync(customers, inspections, inspection_details, revisions):
 
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-
-        # Insert customers into the database
-    for customer in customers:
-        cursor.execute('''
-            INSERT INTO Customer (name, site, image_url, last_modified)
-            VALUES (?, ?, ?, ?)
-            ''', (customer['name'], customer.get('site', ''), customer.get('image_url', ''), datetime.now()))
-        
-        # Insert inspections into the database
-    for inspection in inspections:
-        cursor.execute('''
-            INSERT INTO Inspection_Header (description, summary, customer_id, date, image_url, title, last_modified)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (inspection['description'], inspection.get('summary', ''), inspection['customer_id'], inspection['date'], inspection.get('image_url', ''), inspection.get('title', ''), datetime.now()))
-
-        # Insert inspection details into the database
-    for detail in inspection_details:
-        cursor.execute('''
-                INSERT INTO Inspection_Details (inspection_id, area, item, action_required, probability, consequence, time_ranking, unit, observations, recommendations, picture_caption, display_on_report, image_url, last_modified)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (detail['inspection_id'], detail.get('area', ''), detail.get('item', ''), detail.get('action_required', ''), detail.get('probability', 0), detail.get('consequence', 0), detail.get('time_ranking', 0), detail.get('unit', ''), detail.get('observations', ''), detail.get('recommendations', ''), detail.get('picture_caption', ''), detail.get('display_on_report', False), detail.get('image_url', ''), datetime.now()))
-
-        # Insert revisions into the database
-    for revision in revisions:
-        cursor.execute('''
-                INSERT INTO Revisions (inspection_id, date, status, detail, issued_by)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (revision['inspection_id'], revision['date'], revision['status'], revision['detail'], revision['issued_by']))
-
-        # Commit the transaction and close the connection
-    conn.commit()
-    conn.close()   
-
-
-def replace_local_table(table_name, online_data):
-    """
-    Replace a local table with data from an online source.
-    """
-    # Connect to the local database
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-    
-    # Drop the local table if it exists
-    cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-    
-    # Create the table structure dynamically from online data
-    # Assuming `online_data` is a list of dictionaries
-    if online_data:
-        # Extract column names from the first entry
-        columns = online_data[0].keys()
-        columns_def = ", ".join([f"{col} TEXT" for col in columns])  # Assuming all fields are TEXT for simplicity
-        
-        # Create the new table
-        cursor.execute(f"CREATE TABLE {table_name} ({columns_def})")
-        
-        # Insert the data
-        for row in online_data:
-            placeholders = ", ".join("?" for _ in row)
-            values = tuple(row.values())
-            cursor.execute(f"INSERT INTO {table_name} VALUES ({placeholders})", values)
-    
-    # Commit and close the connection
-    conn.commit()
-    conn.close()
 
 
 
@@ -263,8 +196,7 @@ def insert(table_name, data, file=None):
     query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
 
     # Debugging output
-    print(f"Query: {query}")
-    print(f"Values: {tuple(data.values())}")
+    
 
     return execute_sql(query, tuple(data.values()))
 
@@ -289,9 +221,7 @@ def update(table_name, data, conditions):
     Returns:
         None
     """
-    if data.get('image_url'):
-        local_path = process_file(data['image_url'])
-        data['image_url'] = local_path
+
     # Safely quote table and column names to avoid conflicts with reserved keywords
     table_name = f'"{table_name}"'
     set_clause = ', '.join(f'"{key}" = ?' for key in data.keys())
@@ -306,7 +236,7 @@ def update(table_name, data, conditions):
     # Execute the query using the execute_sql function
     try:
         execute_sql(query, parameters)
-        print(f"Updated records in {table_name} where {condition_clause}")
+        
     except Exception as e:
         print(f"Error updating records in {table_name}: {e}")
 
