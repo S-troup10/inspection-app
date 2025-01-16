@@ -1,7 +1,10 @@
-from flask import Flask, render_template, request, redirect, flash, url_for, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, flash, url_for, send_file, send_from_directory, jsonify
 import os
 import weasyprint
 import local_database as local
+
+import base64
+import urllib.parse
 
 
 
@@ -29,14 +32,91 @@ def add_security_headers(response):
 #html routes
 @app.route("/<path:filename>")
 def serve_file(filename):
-    print('ran')
+    
     return send_from_directory(os.path.join(app.root_path, 'templates'), filename)
 
 
 
 
 
+@app.route('/sync/<table_name>', methods=['GET'])
+def sync_customer(table_name):
+    table = local.fetch(table_name)
+    for record in table:
+        if record.get("image_url"):
+            try:
+                with open(record['image_url'], 'rb') as file:
+                        # Read the file content
+                    file_content = file.read()
+                        
+                        # Encode the content to Base64
+                    encoded_content = base64.b64encode(file_content)
+                        
+                        # Convert bytes to string
+                    record['image_url'] = encoded_content.decode('utf-8')  # Store Base64 as a string
 
+                    
+            except Exception as e:
+                print(f"Error reading or encoding image for record {record.get('customer_id')}: {e}")
+    return jsonify(table)
+
+
+
+@app.route('/sync/process', methods=['POST'])
+def sync_process():
+    try:
+        # Parse the incoming JSON data
+        data = request.json
+
+        if not data:
+            return jsonify({"error": "No data received."}), 400
+
+        for table_name, records in data.items():
+            print(f"Processing {len(records)} records for table: {table_name}")
+
+            # Iterate through the records and upsert them into the local database
+            for record in records:
+                if 'image_url' in record and record['image_url']:
+                    record['image_url'] = urllib.parse.unquote(record['image_url'])
+                try:
+                    # Check if the record exists based on the primary key
+                    primary_key = None
+
+                    # Define primary keys for each table
+                    primary_keys = {
+                        "Customer": "customer_id",
+                        "Inspection_Header": "inspection_id",
+                        "Inspection_Details": "detail_id"
+                    }
+
+                    if table_name in primary_keys:
+                        primary_key = primary_keys[table_name]
+
+                    if primary_key and primary_key in record:
+                        existing_record_list = local.fetch(table_name, {primary_key: record[primary_key]})
+                        existing_record = existing_record_list
+
+                        if existing_record:
+                            
+                            # Update the record if it exists
+                            local.update(table_name, record, {primary_key: record[primary_key]})
+                        else:
+                            # Insert the record if it does not exist
+                            
+                            local.insert(table_name, record)
+                    else:
+                        
+                        # Insert the record if no primary key is provided
+                        local.insert(table_name, record)
+
+                except Exception as e:
+                    print(f"Error processing record for table {table_name}: {e}")
+
+        return jsonify({"status": "success", "message": "Data synchronized successfully."}), 200
+
+    except Exception as e:
+        print(f"Error in sync_process: {e}")
+        return jsonify({"error": "An error occurred during synchronization.", "details": str(e)}), 500
 
 
 
@@ -307,51 +387,6 @@ def Inspection_add():
     
     return render_template('/inspectionsAdd.html', customers=customers)
 
-@app.route("/upload-Inspection", methods=["POST"])
-def upload_inspection():
-    try:
-        # Retrieve form data
-        description = request.form.get('description')
-        summary = request.form.get('summary')
-        customer_id = request.form.get('customer')
-        date = request.form.get('date')
-        title = request.form.get('title')
-        is_picture = 'image' in request.files and request.files['image'].filename != ''
-        pic = request.files['image'] if is_picture else None
-        
-
-        # Prepare data for insertion
-        inspection_data = {
-            'description': description,
-            'summary': summary,
-            'customer_id': customer_id,
-            'date': date,
-            'title': title,
-            
-        }
-
-        # Insert data into the database
-        response = local.insert(
-            table_name='Inspection_Header',
-            data=inspection_data,
-            file=pic,
-            
-        )
-
-        # Handle response
-        if response:  # Check for 'success' in the response
-            flash("Inspection uploaded successfully!", "success")
-            return redirect('/inspections')
-        else:
-            
-            print(f"Database insertion failed")
-            flash(f"Failed to upload inspection")
-            return redirect('/inspections')
-
-    except Exception as e:
-        print(f"Error during inspection upload: {e}")
-        flash(f"An unexpected error occurred: {e}", "error")
-        return redirect('/inspections')
 
 @app.route('/inspection-Edit/<int:inspection_id>', methods=['GET', 'POST'])
 def edit_inspection(inspection_id):
@@ -571,19 +606,6 @@ def serve_template(template_name):
         return render_template(template_name)
     except:
         return "Template not found", 404
-
-
-@app.route('/api/syncData', methods=['POST'])
-def sync_data():
-    data = request.get_json()
-
-    # Extract data from the request
-    customers = data.get('customers', [])
-    inspections = data.get('inspections', [])
-    inspection_details = data.get('inspectionDetails', [])
-    revisions = data.get('revisions', [])
-    
-    local.sync(customers, inspections, inspection_details, revisions)
 
 
 if __name__ == '__main__':
