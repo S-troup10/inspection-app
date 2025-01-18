@@ -332,7 +332,7 @@ def generate_report(inspection_id):
         pdf = weasyprint.HTML(string=html_content).write_pdf()
 
         # Save the PDF to the server
-        pdf_filename = f'inspection_report_{inspection_id}.pdf'
+        pdf_filename = f'inspection_report.pdf'
         pdf_filepath = os.path.join('./static/pdf/', pdf_filename)
         os.makedirs(os.path.dirname(pdf_filepath), exist_ok=True)
         with open(pdf_filepath, 'wb') as pdf_file:
@@ -358,3 +358,4 @@ def serve_template(template_name):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
