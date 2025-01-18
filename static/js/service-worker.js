@@ -12,6 +12,11 @@ const ITEMS_TO_CACHE = [
   '/inspection-Add',
   '/inspection-Details',
   '/inspectionDetails-Add',
+  '/customer/edit',
+  '/inspections/edit',
+  '/inspection-Details/edit',
+
+
 
   '/static/manifest.json',
   '/static/css/style.css',
