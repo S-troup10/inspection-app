@@ -309,17 +309,22 @@ def generate_report(inspection_id):
         inspection_details = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
         
         
-        logo = 'hv.png'
-        logo = url_for('static', filename=f'images/{logo.replace("./static/images/", "")}', _external=True)
-        
+        logo_filename = 'hv.png'
+        base_url = request.host_url  
+        logo_path = f"{base_url}static/images/{logo_filename}"
+
+        # Manually construct the full URL for the CSS
+        css_filename = 'reportStyle.css'
+        css_path = f"{base_url}static/css/{css_filename}"
+
         # Prepare report data
         report_data = {
             "customer": customer,
             "inspection_header": inspection_header,
             "rows": inspection_details,
             "revisions": revisions,  # Use the fetched revisions here
-            "css": url_for('static', filename=f'css/reportStyle.css', _external=True),
-            "logo": logo
+            "css": css_path,  # Full path to CSS
+            "logo": logo_path  # Full path to logo
         }
 
         # Generate and return the PDF
