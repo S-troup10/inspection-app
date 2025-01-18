@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, flash, url_for, sen
 import os
 import weasyprint
 import local_database as local
-
+import gunicorn
 import base64
 import urllib.parse
 
@@ -151,76 +151,11 @@ def add_Customer_Page():
 
 @app.route('/customer')
 def view_customers():
-    customers = local.fetch("Customer")
-    
-    return render_template('customer.html', customers=customers)
+    return render_template('customer.html')
 
-@app.route('/customer-Edit/<int:customer_id>', methods=['GET', 'POST'])
-def edit_customer(customer_id):
-   
-        # Fetch customer data by ID
-        response = local.fetch('Customer', {'customer_id': customer_id})
-        
-        customer_data = response if response else None
-        
-        customer_data = customer_data[0]
-
-        if not customer_data:
-            flash('customer not found')
-            return redirect('/customer')
-
-        if request.method == 'POST':
-            # Handle form submission to update customer data
-            name = request.form.get('name')
-            site = request.form.get('site')
-            
-            update_data = {'customer_id': customer_id, 'name': name, 'site': site}
-
-            picture = request.files.get('picture')
-
-            if picture and picture.filename:
-                print('user uploaded a file')
-                update_data['image_url'] = picture
-                
-            
-            
-            local.update('Customer', update_data, {'customer_id': customer_id})
-            print(update_data)
-            
-        
-            flash('customesr edited sucsessfully', 'sucsess')
-            return redirect('/customer')  # Redirect back to customer view page
-        # Render the edit page with preloaded data
-        
-        return render_template('customerEdit.html', customer=customer_data)
-
-@app.route("/upload-Customer", methods=["POST"])
-def add_customer():
-    try:
-        
-        is_picture = 'logo' in request.files and request.files['logo'].filename != ''
-        logo = request.files['logo'] if is_picture else None
-        name = request.form.get('name')
-        site = request.form.get('site')
-
-        if not name or not site:
-            flash("Name and site are required fields.", "danger")
-            return redirect(url_for('add_Customer_Page'))
-
-        data = {'name': name, 'site': site}
-        
-        response = local.insert('Customer', data, logo)
-
-        if response:
-            flash("Customer added successfully!", "success")
-        else:
-            flash("Failed to add customer. Please try again later.", "danger")
-
-        return redirect(url_for('view_customers'))
-
-    except Exception as e:
-        flash(f"An error occurred: {e}", "danger")
-        return redirect(url_for('add_Customer_Page'))
+@app.route('/customer/edit', methods=['GET', 'POST'])
+def edit_customer():
+        return render_template('customerEdit.html')
 
 
 
@@ -228,126 +163,25 @@ def add_customer():
 
 
 
-@app.route('/inspection-Details/<int:inspection_id>', methods=['GET'])
-def inspection_details(inspection_id):
-    # Fetch inspections filtered by the inspection_id
-    inspections = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-    
-    # Ensure inspections is a list even if a single item is returned
-    if inspections is None:
-        inspections = []
-    return render_template('inspectionDetails.html', inspections=inspections, inspection_id=inspection_id)
+@app.route('/inspection-Details', methods=['GET'])
+def inspection_details():
+    return render_template('inspectionDetails.html')
 
-@app.route('/inspectionDetails-Add/<int:inspection_id>')
-def inspection_detail_add(inspection_id):
+
+@app.route('/inspectionDetails-Add', methods=['GET', 'POST'])
+def inspection_detail_add():
+    # The frontend ensures inspection_id is passed correctly
+    inspection_id = request.args.get('inspection_id')
     return render_template('/inspectionDetailAdd.html', inspection_id=inspection_id)
 
-@app.route("/upload-InspectionDetail/<int:inspection_id>", methods=["POST"])
-def upload_inspection_detail(inspection_id):
-    try:
-        try:
-            pic = request.files['picture']
-        except: 
-            pic = None
-        print(f'pic : {pic}')
-        # Retrieve form data
-        inspection_data = {
-            'inspection_id': inspection_id,
-            'area': request.form.get('area'),
-            'item': request.form.get('item'),
-            'action_Required': request.form.get('action_required'),
-            'probability': request.form.get('probability'),
-            'consequence': request.form.get('consequence'),
-            'time_Ranking': request.form.get('time_ranking'),
-            'unit': request.form.get('unit'),
-            'observations': request.form.get('observations'),
-            'recommendations': request.form.get('recommendations'),
-            'picture_Caption': request.form.get('picture_caption'),
-            'display_On_Report': request.form.get('display_on_Report')
-        }
-
-        # Insert data into the database
-        
-        response = local.insert(
-            table_name='Inspection_Details',
-            data=inspection_data,
-            file=pic,
-        )
-
-        # Validate response
-        print(f"Insert data response: {response}")
-        if response:
-            flash("Inspection details uploaded successfully!", "success")
-            return redirect(f'/inspection-Details/{inspection_id}')
-        else:
-            
-            
-            flash(f"Failed to save inspection details")
-            return redirect(f'/inspection-Details/{inspection_id}')
-
-    except Exception as e:
-        print(f"Error: {e}")
-        flash(f"An error occurred: {e}", "error")
-        return redirect(f'/inspection-Details/{inspection_id}')
 
 
 
-@app.route('/inspectionDetail-Edit/<int:detail_id>', methods=['GET', 'POST'])
-def edit_inspection_detail(detail_id):
-    # Fetch inspection data by ID
-    response = local.fetch('Inspection_Details', {'detail_id': detail_id})  # Assuming response is a dict
+@app.route('/inspection-Details/edit', methods=['GET', 'POST'])
+def edit_inspection_detail():
     
-    inspection_id = response[0].get('inspection_id')
-    
-    # Check if the response contains the required data
-    if not response:
-        flash('no inspection found')
-
-    inspection_data = response[0]  # Access the first record in the 'data' list
-
-    if request.method == 'POST':
-        # Handle form submission to update inspection data
-        
-        area = request.form.get('area')
-        item = request.form.get('item')
-        action_required = request.form.get('action_required')
-        probability = request.form.get('probability')
-        consequence = request.form.get('consequence')
-        time_ranking = request.form.get('time_Ranking')
-        unit = request.form.get('unit')
-        observations = request.form.get('observations')
-        recommendations = request.form.get('recommendations')
-        picture_caption = request.form.get('picture_Caption')
-        display_on_report = request.form.get('display_On_Report')
-
-        # Prepare data for update
-        update_data = {
-            'area': area,
-            'inspection_id' : inspection_id,
-            'item': item,
-            'action_Required': action_required,
-            'probability': probability,
-            'consequence': consequence,
-            'time_Ranking': time_ranking,
-            'unit': unit,
-            'observations': observations,
-            'recommendations': recommendations,
-            'picture_Caption': picture_caption,
-            
-            'display_On_Report': display_on_report,
-        }
-        picture = request.files.get('picture')
-
-        if picture and picture.filename:
-            update_data['image_url'] = picture
-
-        # Update the inspection record
-        local.update('Inspection_Details', update_data, {'detail_id':detail_id})
-        flash('data inserted sucsessfuly')
-        return redirect(f'/inspection-Details/{inspection_id}')  # Redirect to the customer view page
-
     # Render the edit page with preloaded data
-    return render_template('inspectionDetailEdit.html', inspection=inspection_data)
+    return render_template('inspectionDetailEdit.html')
 
 
 
@@ -388,111 +222,37 @@ def Inspection_add():
     return render_template('/inspectionsAdd.html', customers=customers)
 
 
-@app.route('/inspection-Edit/<int:inspection_id>', methods=['GET', 'POST'])
-def edit_inspection(inspection_id):
-    # Fetch inspection data
-    response = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
-    if not response:
-        flash('Inspection not found', 'error')
-        return redirect('/inspections')
-
-    inspection_data = response[0]
-    print(inspection_data)
+@app.route('/inspections/edit', methods=['GET', 'POST'])
+def edit_inspection():
+    
     # Fetch customers for the dropdown
-    customers = local.fetch('Customer')
+    
 
-    if request.method == 'POST':
-        
-        description = request.form.get('description')
-        summary = request.form.get('summary')
-        customer_id = request.form.get('customer')
-        date = request.form.get('date')
-        title = request.form.get('title')
-
-        update_data = {
-            'description': description,
-            'summary': summary,
-            'customer_id': customer_id,
-            'date': date,
-            'title' : title
-        }
-        picture = request.files.get('picture')
-
-        if picture and picture.filename:
-            print('user uploaded a file')
-            update_data['image_url'] = picture
-
-        local.update('Inspection_Header', update_data, {'inspection_id': inspection_id})
-        flash('Inspection updated successfully!', 'success')
-        return redirect('/inspections')
-
-    return render_template('inspectionsEdit.html', inspection=inspection_data, customers=customers)
+    return render_template('inspectionsEdit.html')
 
 
 
 @app.route('/select-Inspections', methods=['GET', 'POST'])
 def select_inspections():
-    customers = local.fetch('Customer')
-    inspection_headers = None
-    selected_customer_id = None
-    
-    customers_with_inspections = []
-    
-    for customer in customers:
-        #check if it has an inspection associated with it
-        inpection_count = local.fetch('Inspection_Header', {'customer_id': customer.get('customer_id')})
-       
-        if len(inpection_count) > 0 :
-            customers_with_inspections.append(customer)
-            
-    
-
-    if request.method == 'POST':
-        selected_customer_id = request.form.get('customer')
-        
-        if selected_customer_id:
-            
-            inspection_headers = local.fetch('Inspection_Header', {'customer_id': selected_customer_id})
-            
-            
-            
-            
-            filtered_inspections = []
-            for inspection in inspection_headers:
-                count = len(local.fetch('Inspection_Details', {'inspection_id': inspection.get('inspection_id')}))
-                
-                if count > 0:  
-                    inspection['details_count'] = count
-                    filtered_inspections.append(inspection)
-            
-            # Update inspection headers with filtered list
-            inspection_headers = filtered_inspections
-                
-        
-    return render_template(
-        '/selectPrint.html',
-        customers=customers_with_inspections,
-        inspection_data=inspection_headers,
-        selected_customer_id=selected_customer_id,
-       # Pass the flag to the template
-    )
-
-
-
-
-
-
-@app.route('/revisions')
-def revisions():
-    revisions = local.fetch('Revisions')
-    return render_template('revisions.html', revisions=revisions)
-
-@app.route('/revisions-Add')
-def add_revisions():
+    # Handle GET request (render the page)
+    # Fetch all inspection headers
     inspections = local.fetch('Inspection_Header')
-    return render_template('revisionsAdd.html', inspections=inspections)
 
+    # Fetch customer details and map customer_id to customer name
+    customers = local.fetch('Customer')
+    customer_map = {customer['customer_id']: customer['name'] for customer in customers}
 
+    # Add customer name to each inspection
+    filtered_inspections = []
+    for inspection in inspections:
+        details_count = len(local.fetch('Inspection_Details', {'inspection_id': inspection.get('inspection_id')}))
+        if details_count > 0:
+            inspection['details_count'] = details_count
+            filtered_inspections.append(inspection)
+        inspection['customer_name'] = customer_map.get(inspection['customer_id'], 'Unknown')
+
+    # Pass inspections to the template
+    return render_template('selectPrint.html', inspections=filtered_inspections)
 
 
 
@@ -516,7 +276,7 @@ def generate_report(inspection_id):
                 "detail": other_version if other_version else version,
                 "issued_by": issued_by
             }
-            print('Revisions Data:', revisions_data)
+            
 
             # Insert revisions data into the local database
             try:
@@ -527,62 +287,46 @@ def generate_report(inspection_id):
 
             # Fetch revisions after inserting new revision
             revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-            
-
 
         # Fetch revisions regardless of POST
         revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-        
 
         # Fetch inspection header
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
         if not inspection_header:
-            flash(f"Inspection header not found for ID: {inspection_id}")
+            
             return redirect('/select-Inspections')
         inspection_header = inspection_header[0]
 
         # Fetch customer data
         customer_data = local.fetch('Customer', {'customer_id': inspection_header.get('customer_id')})
         if not customer_data:
-            flash(f"Customer not found for ID: {inspection_header.get('customer_id')}")
+            
             return "Customer not found", 404
         customer = customer_data[0]
 
         # Fetch and sort inspection details
         inspection_details = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-        #inspection_details.sort(key=lambda x: x.get('time_ranking', 0))
-
-        # Update image URLs
+        
+        
         logo = 'hv.png'
         logo = url_for('static', filename=f'images/{logo.replace("./static/images/", "")}', _external=True)
-        css = url_for('static', filename=f'css/reportStyle.css', _external=True)
-
-        for row in inspection_details:
-            if row.get("image_url"):
-                row["image_url"] = url_for('static', filename=f'cache/{row["image_url"].replace("./static/cache/", "")}', _external=True)
         
-        if customer.get("image_url"):
-            customer["image_url"] = url_for('static', filename=f'cache/{customer["image_url"].replace("./static/cache/", "")}', _external=True)
-
-        if inspection_header.get("image_url"):
-            inspection_header["image_url"] = url_for('static', filename=f'cache/{inspection_header["image_url"].replace("./static/cache/", "")}', _external=True)
-
         # Prepare report data
         report_data = {
             "customer": customer,
             "inspection_header": inspection_header,
             "rows": inspection_details,
-            "total_pages": 2 + len(inspection_details),
-            "logo": logo,
-            "css": css,
-            "revisions": revisions  # Use the fetched revisions here
+            "revisions": revisions,  # Use the fetched revisions here
+            "css": url_for('static', filename=f'css/reportStyle.css', _external=True),
+            "logo": logo
         }
 
         # Generate and return the PDF
         html_content = render_template('report.html', **report_data)
         pdf = weasyprint.HTML(string=html_content).write_pdf()
-        #pdf_stream = io.BytesIO(pdf)
-        # Display the PDF inline in the browser
+
+        # Save the PDF to the server
         pdf_filename = f'inspection_report_{inspection_id}.pdf'
         pdf_filepath = os.path.join('./static/pdf/', pdf_filename)
         os.makedirs(os.path.dirname(pdf_filepath), exist_ok=True)
@@ -591,11 +335,10 @@ def generate_report(inspection_id):
 
         # Flash a message with the download link
         pdf_url = url_for('static', filename=f'pdf/{pdf_filename}', _external=True)
-        flash(f"Report generated successfully. <a href='{pdf_url}' target='_blank'>Download the PDF</a>", 'success')
-        return redirect('/')
+        return render_template('report_ready.html', pdf_url=pdf_url)
 
     except Exception as e:
-        flash(f"Error: {str(e)}")
+        
         return redirect('/')
 
 @app.route('/static/templates/<template_name>')
