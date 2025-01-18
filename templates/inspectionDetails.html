@@ -8,32 +8,41 @@
 
     <!-- Add Inspection Detail Button -->
     <div class="add-customer-container">
-        <a href="/inspectionDetails-Add/{{inspection_id}}" class="add-btn">Add Inspection Detail</a>
+        <a href="#" id="add-inspection-detail-btn" class="add-btn">Add Inspection Detail</a>
     </div>
 
+    <!-- Inspection Detail Table -->
     <div class="customer-list" id="table"></div>
 </section>
 
 <script src="/static/js/table.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Extract the inspection_id from the URL
-        const urlParts = window.location.pathname.split('/');
-        const inspectionId = urlParts[urlParts.length - 1]; // Assumes ID is the last part of the URL
-        //console.log(inspectionId);
+        // Retrieve the inspection_id from local storage
+        const inspectionId = localStorage.getItem('current_inspection_id');
 
-        // Generate table
-        generateTable(
-            'HV-storage',
-            'Inspection_Details',
-            'table',
-            [
-                'area', 'item', 'action_required', 
-                 'time_ranking', 'observations', 
-                'recommendations', 'image_url'
-            ],
-            { index: 'inspection_id', value: inspectionId }
-        );
+        if (inspectionId) {
+            // Update the Add Inspection Detail button with the inspection_id
+            const addButton = document.getElementById('add-inspection-detail-btn');
+            addButton.href = `/inspectionDetails-Add`;
+            
+            // Generate the table
+            generateTable(
+                'HV-storage',
+                'Inspection_Details',
+                'table',
+                [
+                    'area', 'item', 'action_required',
+                    'time_ranking', 'observations',
+                    'recommendations', 'image_url'
+                ],
+                { index: 'inspection_id', value: inspectionId }
+            );
+        } else {
+            console.error('No inspection_id found in local storage.');
+            alert('Inspection ID is missing. Please navigate back and select an inspection.');
+            window.location.href = '/inspections'; // Redirect to a fallback page
+        }
     });
 </script>
 {% endblock %}

@@ -25,9 +25,10 @@
     // Add event listener for row clicks
     document.getElementById('table').addEventListener('click', function(event) {
         const row = event.target.closest('tr');
-        if (row) {
-            // Find the inspection_id field within the row (assuming it's in the last column)
-            const inspectionId = row.querySelector('td:last-child').textContent;  // Adjust this to select the correct column if needed
+        // Make sure the click isn't coming from the edit button
+        if (row && !event.target.closest('button.edit-btn')) {
+            // Find the inspection_id field within the second-to-last column
+            const inspectionId = row.querySelectorAll('td')[row.cells.length - 2].textContent; 
             if (inspectionId) {
                 redirectToPrintReports(inspectionId);
             }
@@ -35,8 +36,13 @@
     });
 
     function redirectToPrintReports(inspectionId) {
-        window.location.href = `/inspection-Details/${inspectionId}`;
+        // Store the inspectionId in local storage
+        localStorage.setItem('current_inspection_id', inspectionId);
+        
+        // Redirect to the inspection details page without query parameters
+        window.location.href = '/inspection-Details';
     }
+    
 </script>
 </section>
 {% endblock %}

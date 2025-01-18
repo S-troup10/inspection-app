@@ -1,367 +1,237 @@
 {% extends 'base.html' %}
 
-{% block title %}Select Inspections{% endblock %}
+{% block title %}View Inspections{% endblock %}
 
 {% block content %}
-<div class="form-container">
-    <h2>Select Inspections by Customer</h2>
+<script src="/static/js/db.js"></script>
+<script>
+    window.addEventListener('load', () => {
+        sync_client_with_server();
 
-    <!-- Form for customer selection -->
-    <form method="POST">
-        <div class="form-group">
-            <label for="customer">Select Customer:</label>
-            <select id="customer" name="customer" onchange="this.form.submit()">
-                <option value="" disabled {% if not selected_customer_id %}selected{% endif %}>Select a customer</option>
-                {% for customer in customers %}
-                    <option value="{{ customer.customer_id }}" 
-                        {% if customer.customer_id == selected_customer_id %}selected{% endif %}>
-                        {{ customer.name }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-    </form>
+    });
 
-    <!-- Show selected customer's name -->
-    {% if selected_customer_id %}
-        <div class="selected-customer" style="margin-top: 20px;">
-            <h3>Selected Customer: 
-                {% for customer in customers %}
-                    {% if customer.customer_id == selected_customer_id %}
-                        {{ customer.name }}
-                    {% endif %}
-                {% endfor %}
-            </h3>
-        </div>
-    {% endif %}
+</script>
+<section class="inspection-section">
+    <h2 class="section-title">Select Inspection</h2>
 
     <!-- Inspections Table -->
-    
-{% if inspection_data %}
-    <div id="inspections-section" style="margin-top: 20px;">
-        <h3>Inspections</h3>
-        <table class='table' id="inspections-table">
+    <div class="inspection-list">
+        {% if inspections and inspections|length > 0 %}
+        <table class="table">
             <thead>
                 <tr>
                     <th>Title</th>
-                    <th>Detail Count</th>
-                    <th>Description</th>
                     <th>Date</th>
+                    <th>Description</th>
+                    <th>Customer Name</th>
+                    <th>Details Count</th>
                 </tr>
             </thead>
             <tbody>
-                {% for inspection in inspection_data %}
-                    <tr onclick="showModal('{{ inspection.inspection_id }}', '{{ inspection.title }}')">
-                        <td>{{ inspection.title }}</td>
-                        <td>{{ inspection.details_count }}</td> 
-                        <td>{{ inspection.description }}</td>
-                        <td>{{ inspection.date }}</td>
-                    </tr>
+                {% for inspection in inspections %}
+                <tr onclick="openModal({{ inspection.inspection_id }}, '{{ inspection.title }}')">
+                    <td>{{ inspection.title }}</td>
+                    <td>{{ inspection.date }}</td>
+                    <td>{{ inspection.description }}</td>
+                    <td>{{ inspection.customer_name }}</td>
+                    <td>{{ inspection.details_count }}</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <p>No inspections available at the moment.</p>
+        {% endif %}
     </div>
-{% endif %}
-</div>
+</section>
 
-<!-- Modal Popup -->
-<div id="revision-modal" class="modal">
+<!-- Modal -->
+<div id="inspection-modal" class="modal" aria-hidden="true">
     <div class="modal-content">
-        <h3>Report Revisions</h3>
-        <!-- Dynamic header for the clicked inspection -->
-            <h4 id="inspection-header"></h4>
-
-        <form id="revision-form" method='POST' action='/'>
+        <h3>Generate Inspection Report</h3>
+        <form id="inspection-form" method="POST" action="/inspection-Print/">
+            <input type="hidden" id="inspection-id" name="inspection_id">
             <div class="form-group">
                 <label for="date-issued">Date Issued:</label>
                 <input type="date" id="date-issued" name="date_issued" required>
             </div>
             <div class="form-group">
                 <label for="version">Version:</label>
-                <select id="version" name="version" required onchange="toggleOtherTextBox()">
-                    <option value="" disabled selected>Select Version</option>
+                <select id="version" name="version" onchange="toggleOtherInput()">
                     <option value="First Issue">First Issue</option>
                     <option value="Draft">Draft</option>
                     <option value="Second Issue">Second Issue</option>
                     <option value="other">Other</option>
                 </select>
             </div>
-            
-            <!-- Custom text input for 'Other' version -->
-            <div class="form-group" id="other-version-container" style="display: none;">
-                <label for="other-version">Please specify:</label>
-                <input type="text" id="other-version" name="other_version" placeholder="Enter custom version">
+            <div class="form-group" id="other-version-group" style="display: none;">
+                <label for="other-version">Specify Version:</label>
+                <input type="text" id="other-version" name="other_version">
             </div>
-
-
-
             <div class="form-group">
                 <label for="issued-by">Issued By:</label>
-                <input type="text" id="issued-by" name="issued_by" placeholder="Enter your name" required>
+                <input type="text" id="issued-by" name="issued_by" required>
             </div>
             <div class="modal-actions">
-                <button type="button" id="cancel-button" class="modal-button">Cancel</button>
-                <button type="submit" class="modal-button confirm" >Generate Report</button>
+                <button type="button" onclick="closeModal()">Cancel</button>
+                <button type="submit">Generate Report</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    // Modal and Inspection ID
-    let selectedInspectionId = null;
-    const modal = document.getElementById('revision-modal');
-    const cancelButton = document.getElementById('cancel-button');
-    const form = document.getElementById('revision-form');
-    const dateIssuedInput = document.getElementById('date-issued');
-
-    // Function to get current date in YYYY-MM-DD format
-    function getCurrentDate() {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    // Show the modal popup
-    function showModal(inspectionId, inspectionDescription) {
-        selectedInspectionId = inspectionId;
-    
-        // Set the date input to the current date
-        dateIssuedInput.value = getCurrentDate();
-    
-        // Update the header with the clicked inspection's description
-        const inspectionHeader = document.getElementById('inspection-header');
-        inspectionHeader.textContent = `For: ${inspectionDescription}`;
-    
-        // Display the modal
-        modal.style.display = 'block';
-    }
-
-    // Cancel button action
-    cancelButton.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    // Handle form submission
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-    
-        // Create a hidden form for POST submission
-        const hiddenForm = document.createElement('form');
-        hiddenForm.method = 'POST';
-        hiddenForm.action = `/inspection-Print/${selectedInspectionId}`;
-    
-        // Append hidden input fields for form data
-        const dateIssuedInputHidden = document.createElement('input');
-        dateIssuedInputHidden.type = 'hidden';
-        dateIssuedInputHidden.name = 'date_issued';
-        dateIssuedInputHidden.value = dateIssuedInput.value;
-    
-        const versionInputHidden = document.createElement('input');
-        versionInputHidden.type = 'hidden';
-        versionInputHidden.name = 'version';
-        versionInputHidden.value = document.getElementById('version').value;
-    
-        const issuedByInputHidden = document.createElement('input');
-        issuedByInputHidden.type = 'hidden';
-        issuedByInputHidden.name = 'issued_by';
-        issuedByInputHidden.value = document.getElementById('issued-by').value;
-    
-        // Append inputs to the form
-        hiddenForm.appendChild(dateIssuedInputHidden);
-        hiddenForm.appendChild(versionInputHidden);
-        hiddenForm.appendChild(issuedByInputHidden);
-    
-        // Append the form to the body and submit
-        document.body.appendChild(hiddenForm);
-        hiddenForm.submit();
-    });
-
-    // Close the modal if user clicks outside
-    window.onclick = function(event) {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    };
-    function toggleOtherTextBox() {
-        const versionSelect = document.getElementById('version');
-        const otherVersionContainer = document.getElementById('other-version-container');
-        
-        // Check if 'other' is selected
-        if (versionSelect.value === 'other') {
-            otherVersionContainer.style.display = 'block'; // Show the text box
-        } else {
-            otherVersionContainer.style.display = 'none'; // Hide the text box
-        }
-    };
     // Ensure modal is hidden on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const modal = document.getElementById('revision-modal');
-    modal.style.display = 'none';
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('inspection-modal');
+        modal.classList.remove('show'); // Ensure modal is hidden initially
 
-    // Check if there is an error passed from the backend
-    const errorIndicator = document.getElementById('error-indicator');
-    if (errorIndicator && errorIndicator.dataset.showModal === "true") {
-        modal.style.display = 'block'; // Re-show modal if an error occurs
+        // Prefill the date input with today's date
+        const today = new Date();
+        const dateIssuedInput = document.getElementById('date-issued');
+        dateIssuedInput.value = today.toISOString().split('T')[0];  // Format YYYY-MM-DD
+    });
+
+    const modal = document.getElementById('inspection-modal');
+
+    function openModal(inspectionId, inspectionTitle) {
+        // Set inspection ID in the form
+        document.getElementById('inspection-id').value = inspectionId;
+
+        const form = document.getElementById('inspection-form');
+        form.action = '/inspection-Print/' + inspectionId;
+
+        // Display the modal by adding the show class
+        modal.classList.add('show');
+
+        // Set focus on the first focusable element inside the modal
+        const focusable = modal.querySelector('input, button, select, textarea');
+        if (focusable) focusable.focus();
     }
-});
 
-// Cancel button action
-cancelButton.addEventListener('click', () => {
-    modal.style.display = 'none';
-});
+    function closeModal() {
+        // Hide the modal by removing the show class
+        modal.classList.remove('show');
+    }
+
+    function toggleOtherInput() {
+        const versionSelect = document.getElementById('version');
+        const otherVersionGroup = document.getElementById('other-version-group');
+        
+        // Show or hide the "Other" version input based on selected value
+        if (versionSelect.value === 'other') {
+            otherVersionGroup.style.display = 'block';
+        } else {
+            otherVersionGroup.style.display = 'none';
+        }
+    }
+
+    // Close modal when clicking outside of it
+    window.onclick = function (event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
 </script>
 
-
-
 <style>
-    /* Table Styling */
-    #inspections-table {
+    .inspection-section {
+        margin: 20px;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+
+    .inspection-list {
+        overflow-x: auto;
+    }
+
+    .table {
         width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-        font-size: 16px;
-        color: #333;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        border-radius: 8px;
+        margin-top: 10px;
+        border-spacing: 0; /* Remove default cell spacing */
     }
     
-    /* Table Header */
-    #inspections-table thead {
-        background-color: #007bff;
-        color: white;
+    .table th,
+    .table td {
+        padding: 10px 15px;
+        text-align: left;
+    }
+    
+    .table th {
+        background-color: #f4f4f4;
         font-weight: bold;
     }
     
-    #inspections-table th {
-        text-align: left;
-        padding: 14px 20px;
+    .table tr {
+        border-bottom: 1px solid #ddd; /* Divider between rows */
     }
     
-    /* Table Rows */
-    #inspections-table tbody tr {
-        background-color: #f9f9f9;
-        transition: background-color 0.3s ease;
+    .table tr:last-child {
+        border-bottom: none; /* Remove border from the last row */
     }
     
-    #inspections-table tbody tr:nth-child(even) {
+    .table tr:hover {
         background-color: #f1f1f1;
-    }
-    
-    /* Hover Effect */
-    #inspections-table tbody tr:hover {
-        background-color: #e9ecef;
         cursor: pointer;
     }
     
-    /* Table Cells */
-    #inspections-table td {
-        padding: 12px 20px;
-        text-align: left;
-        border-top: 1px solid #ddd;
-    }
-    
-    /* Actions Column Links */
-    .edit-link, .details-link {
-        color: #007bff;
-        text-decoration: none;
-        font-weight: bold;
-        margin-right: 10px;
-    }
-    
-    .edit-link:hover, .details-link:hover {
-        text-decoration: underline;
-        color: #0056b3;
-    }
-    
-    /* Responsive Table */
-    @media (max-width: 768px) {
-        #inspections-table {
-            font-size: 14px;
-        }
-    
-        #inspections-table th, #inspections-table td {
-            padding: 10px;
-        }
-    }
-    
 
-
-    tr:hover td {
-        background-color: #e9ecef;
-    }
-    
     .modal {
-        display: none; /* Hidden by default */
-        position: fixed; /* Stay in place and fixed to the viewport */
-        z-index: 1000; /* Ensure it stays above other elements */
-        left: 0;
+        position: fixed;
         top: 0;
-        width: 100%; /* Full width */
-        height: 100%; /* Full height */
-        overflow: hidden; /* Prevent scrolling within the modal */
-        background-color: rgba(0, 0, 0, 0.4); /* Semi-transparent background */
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5); /* Dimmed background */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000; /* Ensure it's on top */
+        visibility: hidden; /* Initially hidden */
+        opacity: 0;
+        transition: opacity 0.3s ease; /* Smooth transition */
     }
-    
+
+    .modal.show {
+        visibility: visible; /* Show modal */
+        opacity: 1;
+    }
+
     .modal-content {
-        position: fixed; /* Stay fixed within the viewport */
-        top: 50%; /* Center vertically */
-        left: 50%; /* Center horizontally */
-        transform: translate(-50%, -50%); /* Offset by 50% of width and height for perfect centering */
-        background-color: #fff;
+        background: #fff;
         padding: 20px;
-        border: 1px solid #888;
         border-radius: 8px;
         width: 400px;
-        text-align: left;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 2000; /* Keep the content on top of background */
     }
 
     .modal-actions {
-        margin-top: 20px;
-        text-align: right;
+        display: flex;
+        justify-content: flex-end;
     }
 
-    .modal-button {
-        padding: 10px 20px;
-        margin: 5px;
-        border: none;
-        border-radius: 4px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-
-    .modal-button:hover {
-        opacity: 0.9;
-    }
-
-    .modal-button.confirm {
-        background-color: #007bff;
-        color: #fff;
-    }
-
-    .modal-button.cancel {
-        background-color: #ccc;
+    .modal-actions button {
+        margin-left: 10px;
     }
 
     .form-group {
         margin-bottom: 15px;
     }
 
-    label {
-        font-weight: bold;
+    .form-group label {
         display: block;
         margin-bottom: 5px;
     }
 
-    input, select {
+    .form-group input,
+    .form-group select {
         width: 100%;
         padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+        box-sizing: border-box;
     }
 </style>
+
 {% endblock %}

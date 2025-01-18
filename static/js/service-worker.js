@@ -1,16 +1,17 @@
 const CACHE_NAME = "hvEngineers-cache-v1";
 
+const EXCLUDED_ROUTES = [
+    '/select-Inspections'
+];
+
 const ITEMS_TO_CACHE = [
-  '/index.html', 
-  '/customer.html', 
-  '/customerAdd.html', 
-  '/customerEdit.html', 
-  '/inspectionDetails.html',
-  '/inspectionDetailAdd.html',
-  '/inspectionDetailEdit.html',
-  '/inspections.html',
-  '/inspectionsAdd.html',
-  '/inspectionsEdit.html',
+  '/',
+  '/customer',
+  '/customer-Add',
+  '/inspections',
+  '/inspection-Add',
+  '/inspection-Details',
+  '/inspectionDetails-Add',
 
   '/static/manifest.json',
   '/static/css/style.css',
@@ -48,8 +49,11 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-    if (event.request.method === "POST") {
-        // Directly fetch POST requests from the network
+    // Check if the requested route is in the excluded list
+    const shouldExclude = EXCLUDED_ROUTES.some(route => event.request.url.includes(route));
+
+    if (event.request.method === "POST" || shouldExclude) {
+        // Directly fetch POST requests or excluded routes from the network
         event.respondWith(fetch(event.request));
         return;
     }

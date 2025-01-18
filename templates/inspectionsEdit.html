@@ -5,54 +5,195 @@
 {% block content %}
 <div class="form-container">
     <h2>Edit Inspection</h2>
-    <form action="/inspection-Edit/{{ inspection.inspection_id }}" method="POST" enctype="multipart/form-data">
+
+    <form id="inspectionForm" method="POST" enctype="multipart/form-data">
         <!-- Customer Selection -->
         <div class="form-group">
             <label for="customer">Customer</label>
             <select id="customer" name="customer" required>
-                {% if customers and customers|length > 0 %}
-                    {% for customer in customers %}
-                        <option value="{{ customer.customer_id }}" {% if customer.customer_id == inspection.customer_id %}selected{% endif %}>
-                            {{ customer.name }}
-                        </option>
-                    {% endfor %}
-                {% else %}
-                    <option disabled>No customers available</option>
-                {% endif %}
+                <option value="" disabled selected>Loading customers...</option>
             </select>
         </div>
 
+        <!-- Title Input -->
         <div class="form-group">
-            <label for="title">title</label>
-            <input type=text id="title" name="title" value="{{ inspection.title }}" required>
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" required>
         </div>
+
         <!-- Description Input -->
         <div class="form-group">
             <label for="description">Description</label>
-            <input id="description" name="description"  value="{{ inspection.description }}" required>
+            <textarea id="description" name="description" rows="4" required></textarea>
         </div>
 
         <!-- Summary Input -->
         <div class="form-group">
             <label for="summary">Summary</label>
-            <input id="summary" name="summary" value="{{ inspection.summary }}" required>
+            <textarea id="summary" name="summary" rows="4" required></textarea>
+        </div>
+
+        <!-- Image Upload -->
+        <div class="form-group">
+            <label for="image">Image</label>
+            <input type="file" id="image" name="image" accept="image/*">
+            <img id="image-preview" src="#" alt="Image Preview" style="display: none; max-width: 100px;">
         </div>
 
         <!-- Date Input -->
         <div class="form-group">
             <label for="date">Date</label>
-            <input type="date" id="date" name="date" value={{ inspection.date }} required>
+            <input type="date" id="date" name="date" required>
         </div>
 
-        <div class="form-group">
-            <label for="picture">Upload Picture</label>
-            <input type="file" id="picture" name="picture" accept="image/*">
-        </div>
-
-        <!-- Submit Button -->
         <button type="submit" class="submit-btn">Save Changes</button>
     </form>
 </div>
+
+<script>
+    // Function to fetch customers from IndexedDB and inspection data from localStorage
+    const populateFormData = () => {
+        const customerStoreName = "Customer"; // Replace with your customer store name
+        const dbName = "HV-storage"; // Replace with your IndexedDB database name
+
+        // Fetch inspection data from localStorage
+        const inspectionData = JSON.parse(localStorage.getItem('edit_record')) || {};
+        const inspectionId = inspectionData.inspection_id || null;
+
+        // Populate the form with inspection data from localStorage
+        document.getElementById('title').value = inspectionData.title || '';
+        document.getElementById('description').value = inspectionData.description || '';
+        document.getElementById('summary').value = inspectionData.summary || '';
+        document.getElementById('date').value = inspectionData.date || '';
+
+        const imagePreview = document.getElementById('image-preview');
+        if (inspectionData.image_url) {
+            imagePreview.src = inspectionData.image_url;
+            imagePreview.style.display = 'block';
+        }
+
+        // Fetch customers from IndexedDB
+        const request = indexedDB.open(dbName, 1);
+
+        request.onsuccess = function(event) {
+            const db = event.target.result;
+
+            // Fetch customers from IndexedDB
+            const customerTransaction = db.transaction(customerStoreName, 'readonly');
+            const customerStore = customerTransaction.objectStore(customerStoreName);
+            const customerDropdown = document.getElementById('customer');
+            
+            const customerCursorRequest = customerStore.openCursor();
+            customerCursorRequest.onsuccess = function(event) {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const customer = cursor.value;
+                    const option = document.createElement('option');
+                    option.value = customer.customer_id;
+                    option.textContent = customer.name;
+                    customerDropdown.appendChild(option);
+                    cursor.continue();
+                }
+            };
+
+            // After populating customers, set the selected customer
+            if (inspectionData.customer_id) {
+                document.getElementById('customer').value = inspectionData.customer_id;
+            }
+        };
+
+        request.onerror = function(event) {
+            console.error("Error opening IndexedDB:", event);
+        };
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        populateFormData(); // Populate form data on page load
+
+        // Handle image preview for file upload
+        document.getElementById('image').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('image-preview');
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Save the updated inspection data when the form is submitted
+        document.getElementById('inspectionForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const customer = document.getElementById('customer').value;
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const summary = document.getElementById('summary').value;
+            const date = document.getElementById('date').value;
+            const imageFile = document.getElementById('image').files[0];
+            const last_modified = new Date().toISOString();
+
+            let imageBase64 = document.getElementById('image-preview').src; // Use current image if no new image is uploaded
+            if (imageFile) {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    imageBase64 = reader.result;
+                    saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified);
+                };
+                reader.readAsDataURL(imageFile);
+            } else {
+                saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified);
+            }
+        });
+
+        function saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified) {
+            const inspectionData = JSON.parse(localStorage.getItem('edit_record')); // Get the inspection data from localStorage
+            const inspectionId = inspectionData.inspection_id; // Use inspection_id from the record
+            const updatedInspectionData = {
+                inspection_id: inspectionId,
+                customer_id: customer,
+                title: title,
+                description: description,
+                summary: summary,
+                date: date,
+                image_url: imageBase64,
+                last_modified: last_modified
+            };
+
+            const dbName = "HV-storage"; // Your IndexedDB database name
+            const customerStoreName = "Inspection_Header"; // Replace with your inspection store name
+
+            const request = indexedDB.open(dbName, 1);
+
+            request.onsuccess = function(event) {
+                const db = event.target.result;
+
+                // Open a transaction to update the inspection
+                const transaction = db.transaction(customerStoreName, "readwrite");
+                const store = transaction.objectStore(customerStoreName);
+                
+                // Use put() to update the inspection record
+                const putRequest = store.put(updatedInspectionData);
+
+                putRequest.onsuccess = function() {
+                    alert("Inspection updated successfully!");
+                    window.location.href = "/inspections"; // Redirect after successful submission
+                };
+
+                putRequest.onerror = function() {
+                    alert("Error updating inspection.");
+                };
+            };
+
+            request.onerror = function(event) {
+                console.error("Error opening IndexedDB:", event);
+            };
+        }
+    });
+</script>
 
 <style>
     .form-container {
@@ -83,7 +224,7 @@
     }
 
     input, select, textarea {
-        width: calc(100% - 16px);
+        width: calc(100% - 16px); /* Prevent touching edges */
         padding: 8px;
         border: 1px solid #ccc;
         border-radius: 4px;
@@ -92,7 +233,7 @@
     }
 
     textarea {
-        resize: vertical;
+        resize: vertical; /* Allow vertical resizing */
     }
 
     .submit-btn {
@@ -100,7 +241,6 @@
         background-color: #007bff;
         color: white;
         padding: 10px 15px;
-        text-decoration: none;
         border-radius: 4px;
         font-size: 16px;
         cursor: pointer;
@@ -110,6 +250,14 @@
 
     .submit-btn:hover {
         background-color: #0056b3;
+    }
+
+    .preview-image {
+        display: block;
+        max-width: 100px;
+        margin-top: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
     }
 </style>
 {% endblock %}

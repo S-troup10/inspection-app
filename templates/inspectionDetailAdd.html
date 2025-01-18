@@ -120,82 +120,75 @@
         }
     });
 
-    // Get current date and time
-    const getCurrentDateTime = () => {
-        const now = new Date();
-        return now.toISOString().slice(0, 19).replace('T', ' ');
-    };
+    // Ensure inspection_id is available from local storage
+    const inspectionId = localStorage.getItem('current_inspection_id');
+
+    if (!inspectionId) {
+        alert("Missing inspection ID. Please navigate back to the inspections page.");
+        window.location.href = "/inspections"; // Redirect if missing
+    }
 
     document.getElementById('inspectionForm').addEventListener('submit', function(event) {
         event.preventDefault();
-
-        // Extract inspection ID from URL
-        const path = window.location.pathname;
-        const parts = path.split('/');
-        const inspection_id = parts[parts.length - 1];
 
         // Fetch form values
         const area = document.getElementById('area').value;
         const item = document.getElementById('item').value;
         const action_required = document.getElementById('action_required').checked ? 'Yes' : 'No';
 
-        const probabilityRadio = document.querySelector('input[name="probability"]:checked');
-        const probability = probabilityRadio ? probabilityRadio.dataset.label : null;
-
-        const consequenceRadio = document.querySelector('input[name="consequence"]:checked');
-        const consequence = consequenceRadio ? consequenceRadio.dataset.label : null;
-
-        const timeRankingRadio = document.querySelector('input[name="time_ranking"]:checked');
-        const time_ranking = timeRankingRadio ? timeRankingRadio.dataset.label : null;
+        const probability = document.querySelector('input[name="probability"]:checked')?.dataset.label;
+        const consequence = document.querySelector('input[name="consequence"]:checked')?.dataset.label;
+        const time_ranking = document.querySelector('input[name="time_ranking"]:checked')?.dataset.label;
 
         const unit = document.getElementById('unit').value;
         const observations = document.getElementById('observations').value;
         const recommendations = document.getElementById('recommendations').value;
         const picture_caption = document.getElementById('picture_caption').value;
         const display_on_report = document.getElementById('display_picture_on_report').checked ? 1 : 0;
-        const last_modified = getCurrentDateTime();
+        const last_modified = new Date().toISOString();
 
         const pictureFile = document.getElementById('picture').files[0];
         let image_url = null;
 
+        // Handle image upload
         if (pictureFile) {
             const reader = new FileReader();
             reader.onloadend = function() {
                 image_url = reader.result;
-                saveInspectionData({ 
-                    inspection_id, 
-                    area, 
-                    item, 
-                    action_required, 
-                    probability, 
-                    consequence, 
-                    time_ranking, 
-                    unit, 
-                    observations, 
-                    recommendations, 
-                    picture_caption, 
-                    display_on_report, 
-                    image_url, 
-                    last_modified 
+                saveInspectionData({
+                    inspection_id: inspectionId,
+                    area,
+                    item,
+                    action_required,
+                    probability,
+                    consequence,
+                    time_ranking,
+                    unit,
+                    observations,
+                    recommendations,
+                    picture_caption,
+                    display_on_report,
+                    image_url,
+                    last_modified
                 });
             };
             reader.readAsDataURL(pictureFile);
         } else {
-            saveInspectionData({ 
-                inspection_id, 
-                area, 
-                item, 
-                action_required, 
-                probability, 
-                consequence, 
-                time_ranking, 
-                unit, 
-                observations, 
-                recommendations, 
-                picture_caption, 
-                display_on_report, 
-                image_url, 
-                last_modified 
+            saveInspectionData({
+                inspection_id: inspectionId,
+                area,
+                item,
+                action_required,
+                probability,
+                consequence,
+                time_ranking,
+                unit,
+                observations,
+                recommendations,
+                picture_caption,
+                display_on_report,
+                image_url,
+                last_modified
             });
         }
     });
@@ -205,6 +198,13 @@
         const storeName = "Inspection_Details";
 
         const request = indexedDB.open(dbName, 1);
+
+        request.onupgradeneeded = function(event) {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+            }
+        };
 
         request.onsuccess = function(event) {
             const db = event.target.result;
@@ -218,13 +218,13 @@
                 window.location.href = "/inspections";
             };
 
-            addRequest.onerror = function() {
-                alert("Error adding inspection details.");
+            addRequest.onerror = function(event) {
+                alert("Error adding inspection details: " + event.target.error);
             };
         };
 
-        request.onerror = function() {
-            alert("Error opening database.");
+        request.onerror = function(event) {
+            alert("Error opening database: " + event.target.error);
         };
     }
 </script>

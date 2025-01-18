@@ -62,6 +62,10 @@ const createTable = (records, columns, containerId) => {
         th.textContent = column.charAt(0).toUpperCase() + column.slice(1); // Capitalize column names
         headerRow.appendChild(th);
     });
+    // Add an additional column header for the Edit button
+    const editTh = document.createElement('th');
+    editTh.textContent = 'Actions'; // Label for action column
+    headerRow.appendChild(editTh);
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
@@ -86,6 +90,20 @@ const createTable = (records, columns, containerId) => {
             }
             row.appendChild(cell);
         });
+
+        // Add Edit button in the last column
+        const editCell = document.createElement('td');
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit';
+        editButton.classList.add('edit-btn');
+        editButton.onclick = (event) => {
+            // Prevent the row's click event from firing when the edit button is clicked
+            event.stopPropagation();
+            editRecord(record); // Call editRecord function on click
+        };
+        editCell.appendChild(editButton);
+        row.appendChild(editCell);
+
         tbody.appendChild(row);
     });
 
@@ -98,6 +116,18 @@ const createTable = (records, columns, containerId) => {
 
     console.log(`Table for ${containerId} created successfully.`);
 };
+
+
+const editRecord = (record) => {
+    // Store the record in localStorage
+    localStorage.setItem('edit_record', JSON.stringify(record));
+
+    // Redirect to the current URL with '/edit' appended to it
+    window.location.href = window.location.href + '/edit';
+};
+
+
+
 
 // Add default table styling
 const addTableStyling = () => {
