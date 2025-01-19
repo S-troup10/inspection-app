@@ -313,9 +313,6 @@ def generate_report(inspection_id):
         base_url = request.host_url  
         logo_path = f"{base_url}static/images/{logo_filename}"
 
-        # Manually construct the full URL for the CSS
-        css_filename = 'reportStyle.css'
-        css_path = f"{base_url}static/css/{css_filename}"
 
         # Prepare report data
         report_data = {
@@ -323,7 +320,6 @@ def generate_report(inspection_id):
             "inspection_header": inspection_header,
             "rows": inspection_details,
             "revisions": revisions,  # Use the fetched revisions here
-            "css": css_path,  # Full path to CSS
             "logo": logo_path  # Full path to logo
         }
 
@@ -332,16 +328,9 @@ def generate_report(inspection_id):
         pdf = weasyprint.HTML(string=html_content).write_pdf()
 
         # Save the PDF to the server
-        pdf_filename = f'inspection_report.pdf'
-        pdf_filepath = os.path.join('./static/pdf/', pdf_filename)
-        os.makedirs(os.path.dirname(pdf_filepath), exist_ok=True)
-        with open(pdf_filepath, 'wb') as pdf_file:
-            pdf_file.write(pdf)
-
-        # Flash a message with the download link
-        pdf_url = url_for('static', filename=f'pdf/{pdf_filename}', _external=True)
-        return render_template('report_ready.html', pdf_url=pdf_url)
-
+        
+        return serve_pdf_dynamically(pdf)
+        
     except Exception as e:
         
         return redirect('/')
@@ -356,6 +345,25 @@ def serve_template(template_name):
         return "Template not found", 404
 
 
+
+
+
+
+from flask import make_response
+
+# Serve the PDF dynamically
+def serve_pdf_dynamically(pdf):
+    # Create a Flask response object with the PDF content
+    response = make_response(pdf)
+    
+    # Set headers for the response to indicate a file download
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'inline; filename=inspection_report.pdf'
+
+    
+    return response
+
 if __name__ == '__main__':
     app.run(debug=True)
+
 
