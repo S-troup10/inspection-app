@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Inspection Report</title>
-    <link rel="stylesheet" href=".static/css/reportStyle.css" />
+   
     <style>/* General Styles */
       body {
           font-family: Arial, sans-serif;
@@ -97,7 +97,9 @@
       
       
       
-      
+      .page {
+        page-break-inside: avoid; /* Ensure the entire page stays together */
+    }
       
       
       
@@ -292,6 +294,8 @@
           flex-wrap: wrap; /* Allow the content to wrap on smaller screens */
           max-height: 100%; /* Prevent the content from overflowing */
           position: relative; /* Allow proper positioning of image */
+          page-break-inside: avoid; /* Avoid breaking the section */
+          overflow: hidden; /* Ensure no overflowing content */
       }
       
       .inspection-details .text {
@@ -306,8 +310,10 @@
           right: -10mm; /* Align figure to the far right */
           top: 0mm; /* Adjust top position as needed */
           width: 320px; /* Fixed width for the figure */
+          max-width: 300px; /* Restrict figure width */
+          max-height: 200px;
           text-align: left; /* Center-align content within the figure */
-          margin: 0; /* Reset default margin */
+          margin: 0 auto;
       }
       
       /* Caption Styling (Above the Image) */
@@ -352,6 +358,14 @@
       
           .inspection-details figure figcaption {
               text-align: center; /* Ensure caption remains centered */
+          }
+          .customer-info .description {
+            white-space: nowrap; /* Prevents text wrapping */
+            overflow: hidden; /* Hides overflow content */
+            text-overflow: ellipsis; /* Adds '...' to indicate clipped text */
+            display: block; /* Ensures block behavior for consistent layout */
+            max-width: 100%; /* Restricts the width to the container */
+            font-size: 14px; /* Adjusts font size for readability */
           }
       }</style>
   </head>
@@ -431,7 +445,7 @@
           <h1>List of Priorities</h1>
           <div class="customer-info">
             <h2>{{ customer.name }}</h2>
-            <p>{{ inspection_header.description }}</p>
+            <p class="description">{{ inspection_header.description }}</p>
             <p>{{ inspection_header.date }}</p>
           </div>
         </div>
@@ -476,35 +490,30 @@
           <h1 class="inspection-detail">Inspection Report - Detail Sheet</h1>
           <div class="customer-info">
             <h2>{{ customer.name }}</h2>
-            <p>{{ inspection_header.description }}</p>
+            <p class="description">{{ inspection_header.description }}</p>
             <p>{{ inspection_header.date }}</p>
           </div>
         </div>
         <div class="inspection-details">
           <div class="text">
-            <h3>Inspection Details for: {{ row.item }}</h3>
-            <p>
-              <strong>Action Required:</strong> {{ 'Yes' if row.action_required
-              else 'No' }}
-            </p>
-            <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
-            <p><strong>Area:</strong> {{ row.area }}</p>
-            <p><strong>Unit:</strong> {{ row.unit }}</p>
-            <p><strong>Item:</strong> {{ row.item }}</p>
-            <p><strong>Probability:</strong> {{ row.probability }}</p>
-            <p><strong>Consequence:</strong> {{ row.consequence }}</p>
-            <p><strong>Observations:</strong> {{ row.observations }}</p>
-            <p><strong>Recommendations:</strong> {{ row.recommendations }}</p>
+              <h3>Inspection Details for: {{ row.item }}</h3>
+              <p><strong>Action Required:</strong> {{ 'Yes' if row.action_required else 'No' }}</p>
+              <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
+              <p><strong>Area:</strong> {{ row.area }}</p>
+              <p><strong>Unit:</strong> {{ row.unit }}</p>
+              <p><strong>Item:</strong> {{ row.item }}</p>
+              <p><strong>Probability:</strong> {{ row.probability }}</p>
+              <p><strong>Consequence:</strong> {{ row.consequence }}</p>
+              <p><strong>Observations:</strong> {{ row.observations }}</p>
+              <p><strong>Recommendations:</strong> {{ row.recommendations }}</p>
           </div>
           <figure>
-            {% if row.image_url %}
-
-            <figcaption>Caption: {{ row.picture_caption }}</figcaption>
-            <img src="{{ row.image_url }}" alt="Inspection Image" />
-
-            {% endif %}
+              {% if row.image_url %}
+              <figcaption>Caption: {{ row.picture_caption }}</figcaption>
+              <img src="{{ row.image_url }}" alt="Inspection Image" />
+              {% endif %}
           </figure>
-        </div>
+      </div>
 
         <div class="footer">Report by HV Engineers Pty Ltd</div>
       </div>
