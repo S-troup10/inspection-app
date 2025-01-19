@@ -48,6 +48,9 @@
               position: relative; /* Ensure content doesn't overlap the footer */
               min-height: calc(100vh - 20mm); /* Account for @page margin */
               margin-bottom: 20mm; /* Leave room for the footer */
+              margin: 0; /* Eliminate gaps at the top of the page */
+              padding-top: 0; /* Ensure no extra space above the header */
+              box-sizing: border-box;
           }
       
           .page-break {
@@ -65,26 +68,45 @@
       
       /* Header Styles */
       .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 10px 20px;
-          border-bottom: 2px solid #004d99;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px; /* Horizontal padding only */
+        margin: 0; /* Remove margins */
+        border-bottom: 2px solid #004d99;
+        height: 80px; /* Fixed height to keep layout consistent */
+        box-sizing: border-box; /* Ensure padding is included in height */
       }
       
       .header img {
-          max-height: 50px;
+        max-height: 50px; /* Restrict logo height */
+        display: block;
       }
       
+      .customer-info {
+        text-align: right;
+        flex-grow: 1; /* Allow customer info to take up remaining space */
+        white-space: nowrap; /* Prevent wrapping of text */
+        overflow: hidden; /* Hide overflow content */
+        text-overflow: ellipsis; /* Show ellipsis for clipped text */
+        margin-left: 10px; /* Space between logo and customer info */
+      }
       .customer-info h2 {
-          margin: 0;
-          font-size: 18px;
-          color: #004d99;
+        margin: 0;
+        font-size: 16px;
+        color: #004d99;
+        white-space: nowrap; /* Prevent title wrapping */
+        text-overflow: ellipsis;
+        overflow: hidden;
       }
       
       .customer-info p {
-          margin: 0;
-          font-size: 14px;
+        margin: 0;
+        font-size: 14px;
+        color: #333;
+        white-space: nowrap; /* Prevent text wrapping */
+        overflow: hidden; /* Hide overflowing text */
+        text-overflow: ellipsis; /* Add ellipsis for long text */
       }
       
       
