@@ -37,7 +37,7 @@
             <div class="segmented-control">
                 {% for level, value in [('Low', 1), ('Minor', 2), ('Moderate', 3), ('Major', 4)] %}
                 <label>
-                    <input type="radio" name="consequence" value="{{ value }}" data-label="{{ level }}" required>
+                    <input type="radio" name="consequence" value="{{ level }}" data-label="{{ level }}" required>
                     <span>{{ level }}</span>
                 </label>
                 {% endfor %}
@@ -54,7 +54,7 @@
             <div class="segmented-control">
                 {% for time, value in [('Immediate', 1), ('Under 1 month', 2), ('Under 3 months', 3), ('Under 6 months', 4), ('Under 12 months', 5), ('Under 18 months', 6), ('Over 18 months', 7)] %}
                 <label>
-                    <input type="radio" name="time_ranking" value="{{ value }}" data-label="{{ time }}" required>
+                    <input type="radio" name="time_ranking" value="{{ time }}" data-label="{{ time }}" required>
                     <span>{{ time }}</span>
                 </label>
                 {% endfor %}
@@ -72,7 +72,7 @@
             <div class="segmented-control">
                 {% for probability, value in [('Almost Certain', 1), ('Likely', 2), ('Possible', 3), ('Unlikely', 4), ('Very Rare', 5)] %}
                 <label>
-                    <input type="radio" name="probability" value="{{ value }}" data-label="{{ probability }}" required>
+                    <input type="radio" name="probability" value="{{ probability }}" data-label="{{ probability }}" required>
                     <span>{{ probability }}</span>
                 </label>
                 {% endfor %}

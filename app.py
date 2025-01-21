@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, flash, url_for, send_file, send_from_directory, jsonify
+from flask import Flask, render_template, request, redirect, send_from_directory, jsonify
 import os
 import weasyprint
-import local_database as local
+import local as local
 import gunicorn
 import base64
 import urllib.parse
