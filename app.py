@@ -197,22 +197,11 @@ def edit_inspection_detail():
 
 @app.route('/inspections')
 def inspection_summary():
-    inspection_header = local.fetch("Inspection_Header")
+ 
 
-    for dictionary in inspection_header:
-        # Fetch customer details based on customer_id from the inspection header
-        customer = local.fetch('Customer', {'customer_id': dictionary['customer_id']})
+   
 
-        # Check if customer data exists (i.e., not an empty list)
-        if customer:
-            # Assuming customer[0] contains the dictionary for the first matching customer
-            dictionary.update({'name': customer[0]['name']})
-        else:
-            dictionary.update({'name': 'Unknown Customer'})
-
-    # Debugging to verify updates
-    print(inspection_header)
-    return render_template('inspections.html', inspections=inspection_header)
+    return render_template('inspections.html')
 
 @app.route('/inspection-Add')
 def Inspection_add():
@@ -367,4 +356,4 @@ def serve_pdf_dynamically(pdf):
     return response
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
