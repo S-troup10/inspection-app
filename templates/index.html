@@ -15,9 +15,10 @@
     </div>
 </section>
 
+<!-- Sync Button -->
+<button id="sync-button" title="Sync Now">&#x21BB; Sync</button>
+
 <script src="/static/js/db.js"></script>
-
-
 
 <script>
     // Register service worker
@@ -31,14 +32,47 @@
                 console.error("Service Worker Registration Failed:", error);
             });
     }
-</script>
-<script>
-    window.addEventListener('load', () => {
-        sync_client_with_server();
 
+    // Sync Button Functionality
+    document.getElementById('sync-button').addEventListener('click', async () => {
+        try {
+            await sync_client_with_server();
+            alert('Sync completed successfully.');
+        } catch (error) {
+            console.error('Error during sync:', error);
+            alert('Failed to sync. Please try again.');
+        }
     });
 
+    // Trigger sync on page load
+    window.addEventListener('load', () => {
+        sync_client_with_server();
+    });
 </script>
 
+<style>
+    #sync-button {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+        font-size: 16px;
+        z-index: 1000;
+    }
+
+    #sync-button:hover {
+        background-color: #0056b3;
+    }
+
+    #sync-button:active {
+        background-color: #003d80;
+    }
+</style>
 
 {% endblock %}

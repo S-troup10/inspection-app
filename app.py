@@ -29,16 +29,6 @@ def add_security_headers(response):
     return response
 
 
-#html routes
-@app.route("/<path:filename>")
-def serve_file(filename):
-    
-    return send_from_directory(os.path.join(app.root_path, 'templates'), filename)
-
-
-
-
-
 @app.route('/sync/<table_name>', methods=['GET'])
 def sync_customer(table_name):
     table = local.fetch(table_name)
@@ -57,7 +47,7 @@ def sync_customer(table_name):
 
                     
             except Exception as e:
-                print(f"Error reading or encoding image for record {record.get('customer_id')}: {e}")
+                print(f"Error reading or encoding image for record {record.get('customer_id')}: ")
     return jsonify(table)
 
 
@@ -156,8 +146,6 @@ def view_customers():
 @app.route('/customer/edit', methods=['GET', 'POST'])
 def edit_customer():
         return render_template('customerEdit.html')
-
-
 
 
 

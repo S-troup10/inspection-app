@@ -5,29 +5,27 @@ const EXCLUDED_ROUTES = [
 ];
 
 const ITEMS_TO_CACHE = [
-  '/',
-  '/customer',
-  '/customer-Add',
-  '/inspections',
-  '/inspection-Add',
-  '/inspection-Details',
-  '/inspectionDetails-Add',
-  '/customer/edit',
-  '/inspections/edit',
-  '/inspection-Details/edit',
-
-
-
-  '/static/manifest.json',
-  '/static/css/style.css',
-  '/static/images/hv.png',
-  '/static/images/icon.png',
-  '/static/images/offline.jpg',
-  '/static/js/main.js',
-  '/static/js/db.js',
-  '/static/js/table.js'
+    '/',
+    '/customer',
+    '/customer-Add',
+    '/inspections',
+    '/inspection-Add',
+    '/inspection-Details',
+    '/inspectionDetails-Add',
+    '/customer/edit',
+    '/inspections/edit',
+    '/inspection-Details/edit',
+    '/static/manifest.json',
+    '/static/css/style.css',
+    '/static/images/hv.png',
+    '/static/images/icon.png',
+    '/static/images/offline.jpg',
+    '/static/js/main.js',
+    '/static/js/db.js',
+    '/static/js/table.js'
 ];
 
+// Install Event
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -37,6 +35,7 @@ self.addEventListener('install', (event) => {
     );
 });
 
+// Activate Event
 self.addEventListener("activate", (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
@@ -53,25 +52,22 @@ self.addEventListener("activate", (event) => {
     );
 });
 
+// Fetch Event
 self.addEventListener("fetch", (event) => {
-    // Check if the requested route is in the excluded list
     const shouldExclude = EXCLUDED_ROUTES.some(route => event.request.url.includes(route));
 
     if (event.request.method === "POST" || shouldExclude) {
-        // Directly fetch POST requests or excluded routes from the network
         event.respondWith(fetch(event.request));
         return;
     }
 
     event.respondWith(
-        caches.match(event.request) // Try to find the resource in the cache first
+        caches.match(event.request)
             .then((cachedResponse) => {
                 if (cachedResponse) {
-                    // If resource is found in cache, serve it
                     return cachedResponse;
                 }
 
-                // Otherwise, fetch from network and cache the response
                 return fetch(event.request).then((networkResponse) => {
                     const responseClone = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
@@ -80,10 +76,32 @@ self.addEventListener("fetch", (event) => {
                     return networkResponse;
                 });
             })
-            .catch((error) => {
-                console.error("Resource not available in cache or network:", error);
-                // Fallback to offline page if all else fails
-                return caches.match('/offline.html');
-            })
+            .catch(() => caches.match('/offline.html'))
     );
 });
+
+// Sync Event
+self.addEventListener('sync', (event) => {
+    if (event.tag === 'sync-client-server') {
+        console.log('Sync event triggered: Syncing client with server...');
+        event.waitUntil(syncClientWithServer());
+    }
+});
+
+// Sync Function to Import and Call from db.js
+async function syncClientWithServer() {
+    try {
+        // Import the `sync_client_with_server` function from db.js
+        await importScripts('/static/js/db.js');
+
+        // Ensure the `sync_client_with_server` function is available
+        if (typeof sync_client_with_server === 'function') {
+            await sync_client_with_server();
+            console.log('Client-server sync completed successfully.');
+        } else {
+            console.error('sync_client_with_server function not found in db.js.');
+        }
+    } catch (error) {
+        console.error('Error during client-server sync:', error);
+    }
+}

@@ -16,7 +16,7 @@ def insert(table_name, data):
     try:
         response = supabase.table(table_name).insert(data).execute()
         # Check if insertion is successful
-        print(response)
+        
     except Exception as e:
         print(f"An error occurred: {e}")
         return False
@@ -27,7 +27,7 @@ def update(table_name, data, conditions):
     """
     try:
         response = supabase.table(table_name).update(data).match(conditions).execute()
-        print(response)
+        
     except Exception as e:
         print(f"An error occurred: {e}")
 
@@ -52,7 +52,5 @@ def fetch(table_name, conditions=None):
         return []
 
 
-# Fetch data from the 'Customer' table
-customers = fetch('Customer')  # If you want to use an empty condition
-print(customers)
+
 
