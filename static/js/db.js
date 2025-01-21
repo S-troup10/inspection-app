@@ -148,6 +148,7 @@ const sync_client_with_server = async () => {
         if (response.ok) {
             const result = await response.json();
             console.log('Server response:', result);
+            syncIndexedDB()
         } else {
             console.error('Failed to sync data with server:', response.statusText);
         }
