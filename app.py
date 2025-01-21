@@ -310,8 +310,11 @@ def generate_report(inspection_id):
         
         
         logo_filename = 'hv.png'
-        base_url = request.host_url  
-        logo_path = f"{base_url}static/images/{logo_filename}"
+        with open(f'static/images/{logo_filename}', 'rb') as image_file:
+            logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+            
+        logo = f"data:image/png;base64,{logo_base64}"
+        
 
 
         # Prepare report data
@@ -320,7 +323,7 @@ def generate_report(inspection_id):
             "inspection_header": inspection_header,
             "rows": inspection_details,
             "revisions": revisions,  # Use the fetched revisions here
-            "logo": logo_path  # Full path to logo
+            "logo": logo  # Full path to logo
         }
 
         # Generate and return the PDF
@@ -365,5 +368,3 @@ def serve_pdf_dynamically(pdf):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
