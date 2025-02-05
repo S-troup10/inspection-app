@@ -233,7 +233,7 @@ def select_inspections():
 
 
 
-
+import Email
 
 @app.route('/inspection-Print/<int:inspection_id>', methods=['POST'])
 def generate_report(inspection_id):
@@ -293,7 +293,7 @@ def generate_report(inspection_id):
         logo = f"data:image/png;base64,{logo_base64}"
         
 
-
+        
         # Prepare report data
         report_data = {
             "customer": customer,
@@ -309,7 +309,11 @@ def generate_report(inspection_id):
 
         # Save the PDF to the server
         
-        return serve_pdf_dynamically(pdf)
+        customer_name = customer.get('name')
+        email = request.form.get('email')
+        
+        Email.send_Email(pdf, email, customer_name)
+        return render_template('report_ready.html', email=email)
         
     except Exception as e:
         
@@ -327,7 +331,7 @@ def serve_template(template_name):
 
 
 
-
+    
 
 from flask import make_response
 

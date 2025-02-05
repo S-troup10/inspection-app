@@ -16,7 +16,12 @@
 </section>
 
 <!-- Sync Button -->
-<button id="sync-button" title="Sync Now">&#x21BB; Sync</button>
+<button id="sync-button" title="Sync Now">🔄 Sync</button>
+
+<!-- Full-screen Spinner -->
+<div id="fullscreen-spinner" class="hidden">
+    <div class="spinner-ring"></div>
+</div>
 
 <script src="/static/js/db.js"></script>
 
@@ -35,18 +40,18 @@
 
     // Sync Button Functionality
     document.getElementById('sync-button').addEventListener('click', async () => {
+        const spinner = document.getElementById('fullscreen-spinner');
+        spinner.classList.remove('hidden');  // Show spinner
+
         try {
             await sync_client_with_server();
             alert('Sync completed successfully.');
         } catch (error) {
             console.error('Error during sync:', error);
             alert('Failed to sync. Please try again.');
+        } finally {
+            spinner.classList.add('hidden');  // Hide spinner
         }
-    });
-
-    // Trigger sync on page load
-    window.addEventListener('load', () => {
-        sync_client_with_server();
     });
 </script>
 
@@ -72,6 +77,39 @@
 
     #sync-button:active {
         background-color: #003d80;
+    }
+
+    /* Darker Spinner Ring */
+    .spinner-ring {
+        width: 80px;
+        height: 80px;
+        border: 8px solid rgba(255, 255, 255, 0.3);
+        border-top: 8px solid #007bff; /* Darker blue for the spinner */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    /* Full-screen Spinner Centered */
+    #fullscreen-spinner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2000;
+    }
+
+    /* Spinner Animation */
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .hidden {
+        display: none;
     }
 </style>
 

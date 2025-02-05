@@ -7,10 +7,9 @@
 <script>
     window.addEventListener('load', () => {
         sync_client_with_server();
-
     });
-
 </script>
+
 <section class="inspection-section">
     <h2 class="section-title">Select Inspection</h2>
 
@@ -72,12 +71,22 @@
                 <label for="issued-by">Issued By:</label>
                 <input type="text" id="issued-by" name="issued_by" required>
             </div>
+            <div class="form-group">
+                <label for="email">Email to send reports to:</label>
+                <input type="text" id="email" name="email" required>
+            </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModal()">Cancel</button>
-                <button type="submit">Generate Report</button>
+                <button type="submit" id="generate-report-btn">Generate Report</button>
             </div>
         </form>
     </div>
+</div>
+
+<!-- Updated Spinner for Lazy Loading -->
+<div id="loading-spinner" class="hidden">
+    <div class="spinner-ring"></div>
+
 </div>
 
 <script>
@@ -93,6 +102,7 @@
     });
 
     const modal = document.getElementById('inspection-modal');
+    const spinner = document.getElementById('loading-spinner');
 
     function openModal(inspectionId, inspectionTitle) {
         // Set inspection ID in the form
@@ -125,6 +135,26 @@
             otherVersionGroup.style.display = 'none';
         }
     }
+
+    // Show the spinner and submit the form
+    document.getElementById('inspection-form').addEventListener('submit', function (e) {
+        e.preventDefault();  // Prevent default form submission
+        console.log('this has been run');
+        closeModal();
+
+        // Show the spinner
+        spinner.classList.remove('hidden');
+        spinner.style.display = 'block';  // Ensure it is visible (in case of display manipulation)
+    
+        const form = this;
+        const formData = new FormData(form);
+    
+        // Simulate form submission delay (for lazy loading effect)
+        setTimeout(() => {
+            // Submit the form via AJAX or normal form submission (here we're using regular form submit)
+            form.submit();  // Proceed with the normal form submission after spinner is shown
+        }, 1000);  // Simulate a 1-second delay before submitting
+    });
 
     // Close modal when clicking outside of it
     window.onclick = function (event) {
@@ -177,7 +207,6 @@
         background-color: #f1f1f1;
         cursor: pointer;
     }
-    
 
     .modal {
         position: fixed;
@@ -231,6 +260,41 @@
         width: 100%;
         padding: 8px;
         box-sizing: border-box;
+    }
+
+    /* Updated Spinner for Lazy Loading */
+    #loading-spinner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        font-size: 50px;
+        color: #007bff;
+        z-index: 3000;
+        display: none;
+        transform: translate(-50%, -50%);
+    }
+
+    .spinner-ring {
+        z-index: 3000;
+        width: 80px;
+        height: 80px;
+        border: 8px solid rgba(255, 255, 255, 0.3);
+        border-top: 8px solid #007bff; /* Darker blue for the spinner */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    .hidden {
+        display: none;
     }
 </style>
 

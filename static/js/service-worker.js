@@ -1,7 +1,10 @@
 const CACHE_NAME = "hvEngineers-cache-v1";
 
 const EXCLUDED_ROUTES = [
-    '/select-Inspections'
+    '/select-Inspections',
+    '/sync/Inspection_Details',
+    '/sync/Customer',
+    '/sync/Inspection_Header'
 ];
 
 const ITEMS_TO_CACHE = [
