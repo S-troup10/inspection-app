@@ -11,7 +11,7 @@
     <div class="action-buttons">
         <a href="/customer" class="btn primary-btn">Customer Details</a>
         <a href="/inspections" class="btn secondary-btn">Inspections</a>
-        <a href="/select-Inspections" class="btn secondary-btn">Print Reports</a>
+        <a href="/select-Inspections" id='print' class="btn secondary-btn">Print Reports</a>
     </div>
 </section>
 
@@ -37,6 +37,10 @@
                 console.error("Service Worker Registration Failed:", error);
             });
     }
+    document.getElementById('print').addEventListener('click', async () => {
+        const spinner = document.getElementById('fullscreen-spinner');
+        spinner.classList.remove('hidden');  // Show spinner
+    });
 
     // Sync Button Functionality
     document.getElementById('sync-button').addEventListener('click', async () => {
@@ -53,6 +57,8 @@
             spinner.classList.add('hidden');  // Hide spinner
         }
     });
+
+    
 </script>
 
 <style>
