@@ -364,6 +364,7 @@
       
       /* Inspection Details */
       .inspection-details {
+        font-size: 13.5px;
           display: flex;
           justify-content: space-between;
           margin: 20px 0;
@@ -442,7 +443,7 @@
             
             display: block; /* Ensures block behavior for consistent layout */
             max-width: 100%; /* Restricts the width to the container */
-            font-size: 14px; /* Adjusts font size for readability */
+            
           }
       }
     
@@ -585,15 +586,16 @@
         <div class="inspection-details">
           <div class="text">
               <h3>Inspection Details for: {{ row.item }}</h3>
-              <p><strong>Action Required:</strong> {{ 'Yes' if row.action_required else 'No' }}</p>
-              <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
               <p><strong>Area:</strong> {{ row.area }}</p>
               <p><strong>Unit:</strong> {{ row.unit }}</p>
               <p><strong>Item:</strong> {{ row.item }}</p>
-              <p><strong>Probability:</strong> {{ row.probability }}</p>
-              <p><strong>Consequence:</strong> {{ row.consequence }}</p>
               <p><strong>Observations:</strong> {{ row.observations }}</p>
               <p><strong>Recommendations:</strong> {{ row.recommendations }}</p>
+              <p><strong>Action Required:</strong> {{ 'Yes' if row.action_required else 'No' }}</p>
+              <p><strong>Probability:</strong> {{ row.probability }}</p>
+              <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
+              <p><strong>Consequence:</strong> {{ row.consequence }}</p>
+              <p><strong>Risk Rating:</strong> {{ row.risk_rating }}</p>
 
           </div>
           <figure>

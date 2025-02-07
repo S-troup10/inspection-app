@@ -27,6 +27,11 @@
             <input type="text" id="item" name="item" required>
         </div>
 
+        <div class="form-group">
+            <label for="unit">Unit:</label>
+            <input type="text" id="unit" name="unit">
+        </div>
+        
         <div class="form-group checkbox-group">
             <input type="checkbox" id="action_required" name="action_required" value="True">
             <label for="action_required">Action Required</label>
@@ -85,9 +90,23 @@
         </div>
 
         <div class="form-group">
-            <label for="unit">Unit:</label>
-            <input type="text" id="unit" name="unit">
+            <label>Risk Rating:</label>
+            <div class="segmented-control">
+                {% for risk_rating, value in [('low', 1), ('medium', 2), ('high', 3), ('extreme', 4)] %}
+                <label>
+                    <input type="radio" name="risk_rating" value="{{ risk_rating }}" data-label="{{ risk_rating }}" required>
+                    <span>{{ risk_rating }}</span>
+                </label>
+                {% endfor %}
+                <label>
+                    <input type="radio" name="risk_rating" value="Other" id="risk_rating-other" data-label="Other">
+                    <span>Other</span>
+                </label>
+                <input type="text" id="risk_rating-other-input" name="risk_rating_other" placeholder="Enter custom probability" style="display:none;">
+            </div>
         </div>
+
+        
 
         <div class="form-group">
             <label for="observations">Observations:</label>
@@ -112,10 +131,7 @@
             <img id="picture-preview" src="#" alt="Picture Preview" style="display: none; max-width: 100px;">
         </div>
 
-        <div class="form-group checkbox-group">
-            <input type="checkbox" id="display_picture_on_report" name="display_picture_on_report" value="True">
-            <label for="display_picture_on_report">Display Picture on Report</label>
-        </div>
+
 
         <button type="submit" class="submit-btn">Submit</button>
     </form>
@@ -216,22 +232,24 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
         // Fetch form values
         const area = document.getElementById('area').value;
         const item = document.getElementById('item').value;
+        const unit = document.getElementById('unit').value;
         const action_required = document.getElementById('action_required').checked ? 'Yes' : 'No';
 
         const probability = document.querySelector('input[name="probability"]:checked')?.dataset.label;
         const consequence = document.querySelector('input[name="consequence"]:checked')?.dataset.label;
         const time_ranking = document.querySelector('input[name="time_ranking"]:checked')?.dataset.label;
+        const risk_rating = document.querySelector('input[name="risk_rating"]:checked')?.dataset.label;
 
         // Get custom values if "Other" is selected
         const customConsequence = document.getElementById('consequence-other-input').value;
         const customTimeRanking = document.getElementById('time-ranking-other-input').value;
         const customProbability = document.getElementById('probability-other-input').value;
+        const customRisk_rating = document.getElementById('risk_rating-other-input').value;
 
-        const unit = document.getElementById('unit').value;
         const observations = document.getElementById('observations').value;
         const recommendations = document.getElementById('recommendations').value;
         const picture_caption = document.getElementById('picture_caption').value;
-        const display_on_report = document.getElementById('display_picture_on_report').checked ? 1 : 0;
+
         const last_modified = new Date().toISOString();
 
         const pictureFile = document.getElementById('picture').files[0];
@@ -250,11 +268,12 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
                     probability: customProbability || probability,
                     consequence: customConsequence || consequence,
                     time_ranking: customTimeRanking || time_ranking,
+                    risk_rating: customRisk_rating || risk_rating,
                     unit,
                     observations,
                     recommendations,
                     picture_caption,
-                    display_on_report,
+                    
                     image_url,
                     last_modified
                 });
@@ -269,11 +288,12 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
                 probability: customProbability || probability,
                 consequence: customConsequence || consequence,
                 time_ranking: customTimeRanking || time_ranking,
+                risk_rating: customRisk_rating || risk_rating,
                 unit,
                 observations,
                 recommendations,
                 picture_caption,
-                display_on_report,
+                
                 image_url,
                 last_modified
             });

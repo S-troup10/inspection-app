@@ -33,6 +33,11 @@
             </div>
 
             <div class="form-group">
+                <label for="risk_rating">Risk Rating</label>
+                <input type="text" id="risk_rating" name="risk_rating">
+            </div>
+
+            <div class="form-group">
                 <label for="probability">Probability</label>
                 <input type="text" id="probability" name="probability">
             </div>
@@ -64,10 +69,7 @@
             </div>
             <div id="imagePreviewContainer"></div>  <!-- Preview container for the image -->
 
-            <div class="form-group checkbox-container">
-                <label for="display_picture_on_report">Display Picture on Report</label>
-                <input type="checkbox" id="display_picture_on_report" name="display_on_Report" value="True">
-            </div>
+
 
 
             <button type="submit" class="submit-btn">Update</button>
@@ -100,12 +102,14 @@
 document.getElementById('action_required').checked = parsedData.action_required === true;
 
 
-document.getElementById('display_picture_on_report').checked = parsedData.display_on_Report === true;
+
 
 
 
                 // Pre-fill Consequence input field
                 document.getElementById('consequence').value = parsedData.consequence || '';
+
+                document.getElementById('risk_rating').value = parsedData.consequence || '';
 
                 // Pre-fill Time Ranking input field
                 document.getElementById('time_ranking').value = parsedData.time_ranking || '';
@@ -149,11 +153,12 @@ document.getElementById('display_picture_on_report').checked = parsedData.displa
             consequence: document.getElementById('consequence').value,
             time_ranking: document.getElementById('time_ranking').value,
             probability: document.getElementById('probability').value,
+            probability: document.getElementById('risk_rating').value,
             unit: document.getElementById('unit').value,
             observations: document.getElementById('observations').value,
             recommendations: document.getElementById('recommendations').value,
             picture_caption: document.getElementById('picture_caption').value,
-            display_on_Report: document.getElementById('display_picture_on_report').checked,
+       
             last_modified: getCurrentDateTime()  // Set last modified timestamp
         };
 
