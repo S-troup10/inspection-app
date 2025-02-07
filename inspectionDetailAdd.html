@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Inspection Details{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Add Inspection Details</h2>
+
+    {% if error_message %}
+        <div class="error-message">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {% if request.args.get('status') == 'success' %}
+        <div class="success-message">Inspection details added successfully!</div>
+    {% endif %}
+
+    <form id="inspectionForm" method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="area">Area:</label>
+            <input type="text" id="area" name="area" required>
+        </div>
+
+        <div class="form-group">
+            <label for="item">Item:</label>
+            <input type="text" id="item" name="item" required>
+        </div>
+
+        <div class="form-group">
+            <label for="unit">Unit:</label>
+            <input type="text" id="unit" name="unit">
+        </div>
+        
+        <div class="form-group checkbox-group">
+            <input type="checkbox" id="action_required" name="action_required" value="True">
+            <label for="action_required">Action Required</label>
+        </div>
+
+        <div class="form-group">
+            <label>Consequence:</label>
+            <div class="segmented-control">
+                {% for level, value in [('Low', 1), ('Minor', 2), ('Moderate', 3), ('Major', 4)] %}
+                <label>
+                    <input type="radio" name="consequence" value="{{ level }}" data-label="{{ level }}" required>
+                    <span>{{ level }}</span>
+                </label>
+                {% endfor %}
+                <label>
+                    <input type="radio" name="consequence" value="Other" id="consequence-other" data-label="Other">
+                    <span>Other</span>
+                </label>
+                <input type="text" id="consequence-other-input" name="consequence_other" placeholder="Enter custom consequence" style="display:none;">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Time Ranking:</label>
+            <div class="segmented-control">
+                {% for time, value in [('Immediate', 1), ('Under 1 month', 2), ('Under 3 months', 3), ('Under 6 months', 4), ('Under 12 months', 5), ('Under 18 months', 6), ('Over 18 months', 7)] %}
+                <label>
+                    <input type="radio" name="time_ranking" value="{{ time }}" data-label="{{ time }}" required>
+                    <span>{{ time }}</span>
+                </label>
+                {% endfor %}
+                <label>
+                    <input type="radio" name="time_ranking" value="Other" id="time-ranking-other" data-label="Other">
+                    <span>Other</span>
+                </label>
+                <input type="text" id="time-ranking-other-input" name="time_ranking_other" placeholder="Enter custom time ranking" style="display:none;">
+            </div>
+        </div>
+        
+
+        <div class="form-group">
+            <label>Probability:</label>
+            <div class="segmented-control">
+                {% for probability, value in [('Almost Certain', 1), ('Likely', 2), ('Possible', 3), ('Unlikely', 4), ('Very Rare', 5)] %}
+                <label>
+                    <input type="radio" name="probability" value="{{ probability }}" data-label="{{ probability }}" required>
+                    <span>{{ probability }}</span>
+                </label>
+                {% endfor %}
+                <label>
+                    <input type="radio" name="probability" value="Other" id="probability-other" data-label="Other">
+                    <span>Other</span>
+                </label>
+                <input type="text" id="probability-other-input" name="probability_other" placeholder="Enter custom probability" style="display:none;">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Risk Rating:</label>
+            <div class="segmented-control">
+                {% for risk_rating, value in [('low', 1), ('medium', 2), ('high', 3), ('extreme', 4)] %}
+                <label>
+                    <input type="radio" name="risk_rating" value="{{ risk_rating }}" data-label="{{ risk_rating }}" required>
+                    <span>{{ risk_rating }}</span>
+                </label>
+                {% endfor %}
+                <label>
+                    <input type="radio" name="risk_rating" value="Other" id="risk_rating-other" data-label="Other">
+                    <span>Other</span>
+                </label>
+                <input type="text" id="risk_rating-other-input" name="risk_rating_other" placeholder="Enter custom probability" style="display:none;">
+            </div>
+        </div>
+
+        
+
+        <div class="form-group">
+            <label for="observations">Observations:</label>
+            <input type="text" id="observations" name="observations">
+        </div>
+
+        <div class="form-group">
+            <label for="recommendations">Recommendations:</label>
+            <input type="text" id="recommendations" name="recommendations">
+        </div>
+
+        <div class="form-group">
+            <label for="picture_caption">Picture Caption:</label>
+            <input type="text" id="picture_caption" name="picture_caption">
+        </div>
+
+        <div class="form-group">
+            <label for="picture">Upload Picture:</label>
+            <div id="picture-upload-wrapper">
+                <input type="file" id="picture" name="picture" accept="image/*">
+            </div>
+            <img id="picture-preview" src="#" alt="Picture Preview" style="display: none; max-width: 100px;">
+        </div>
+
+
+
+        <button type="submit" class="submit-btn">Submit</button>
+    </form>
+</div>
+
+<script>
+// Event listener for the "Other" radio button to toggle the visibility of its custom input field
+// Function to handle showing or hiding the "Other" input fields
+// Function to handle showing or hiding the "Other" input fields
+function toggleCustomInputField(groupName) {
+    const otherInputField = document.getElementById(groupName + '-other-input');
+    if (otherInputField) {
+        otherInputField.style.display = 'none'; // Hide the input field when another radio is selected
+    }
+}
+
+// Event listener for the "Other" radio buttons in each group
+document.querySelectorAll('input[type="radio"][value="Other"]').forEach(function (radio) {
+    radio.addEventListener('change', function() {
+        const inputId = radio.id + '-input';
+        const inputField = document.getElementById(inputId);
+
+        // Show or hide the custom input field based on whether the "Other" radio is checked
+        if (radio.checked) {
+            inputField.style.display = 'block'; // Show the input field
+        } else {
+            inputField.style.display = 'none'; // Hide the input field when "Other" is deselected
+        }
+    });
+});
+
+// Event listener for all other radio buttons to hide "Other" input fields when selected
+document.querySelectorAll('input[type="radio"]:not([value="Other"])').forEach(function (radio) {
+    radio.addEventListener('change', function() {
+        // Hide the "Other" input field when another radio button is selected
+        const otherInputField = document.getElementById(radio.name + '-other-input');
+        if (otherInputField) {
+            otherInputField.style.display = 'none'; // Hide the "Other" input field
+        }
+    });
+});
+// Function to hide the "Other" input field for Time Ranking
+function hideTimeRankingInput() {
+    const timeRankingInput = document.getElementById('time-ranking-other-input');
+    if (timeRankingInput) {
+        timeRankingInput.style.display = 'none'; // Hide the custom input field for Time Ranking
+    }
+}
+
+// Event listener for the "Other" radio button in the Time Ranking section
+document.getElementById('time-ranking-other').addEventListener('change', function() {
+    const timeRankingInput = document.getElementById('time-ranking-other-input');
+    // Show or hide the custom input field for Time Ranking based on selection
+    if (this.checked) {
+        timeRankingInput.style.display = 'block'; // Show the input field
+    } else {
+        hideTimeRankingInput(); // Hide the input field when "Other" is deselected
+    }
+});
+
+// Event listener for all other Time Ranking radio buttons to hide the "Other" input field
+document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').forEach(function (radio) {
+    radio.addEventListener('change', function() {
+        hideTimeRankingInput(); // Hide the input field when another radio button is selected
+    });
+});
+
+
+    
+
+
+
+    // Preview image
+    document.getElementById('picture').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('picture-preview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Ensure inspection_id is available from local storage
+    const inspectionId = localStorage.getItem('current_inspection_id');
+
+    if (!inspectionId) {
+        alert("Missing inspection ID. Please navigate back to the inspections page.");
+        window.location.href = "/inspections"; // Redirect if missing
+    }
+
+    document.getElementById('inspectionForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        // Fetch form values
+        const area = document.getElementById('area').value;
+        const item = document.getElementById('item').value;
+        const unit = document.getElementById('unit').value;
+        const action_required = document.getElementById('action_required').checked ? 'Yes' : 'No';
+
+        const probability = document.querySelector('input[name="probability"]:checked')?.dataset.label;
+        const consequence = document.querySelector('input[name="consequence"]:checked')?.dataset.label;
+        const time_ranking = document.querySelector('input[name="time_ranking"]:checked')?.dataset.label;
+        const risk_rating = document.querySelector('input[name="risk_rating"]:checked')?.dataset.label;
+
+        // Get custom values if "Other" is selected
+        const customConsequence = document.getElementById('consequence-other-input').value;
+        const customTimeRanking = document.getElementById('time-ranking-other-input').value;
+        const customProbability = document.getElementById('probability-other-input').value;
+        const customRisk_rating = document.getElementById('risk_rating-other-input').value;
+
+        const observations = document.getElementById('observations').value;
+        const recommendations = document.getElementById('recommendations').value;
+        const picture_caption = document.getElementById('picture_caption').value;
+
+        const last_modified = new Date().toISOString();
+
+        const pictureFile = document.getElementById('picture').files[0];
+        let image_url = null;
+
+        // Handle image upload
+        if (pictureFile) {
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                image_url = reader.result;
+                saveInspectionData({
+                    inspection_id: inspectionId,
+                    area,
+                    item,
+                    action_required,
+                    probability: customProbability || probability,
+                    consequence: customConsequence || consequence,
+                    time_ranking: customTimeRanking || time_ranking,
+                    risk_rating: customRisk_rating || risk_rating,
+                    unit,
+                    observations,
+                    recommendations,
+                    picture_caption,
+                    
+                    image_url,
+                    last_modified
+                });
+            };
+            reader.readAsDataURL(pictureFile);
+        } else {
+            saveInspectionData({
+                inspection_id: inspectionId,
+                area,
+                item,
+                action_required,
+                probability: customProbability || probability,
+                consequence: customConsequence || consequence,
+                time_ranking: customTimeRanking || time_ranking,
+                risk_rating: customRisk_rating || risk_rating,
+                unit,
+                observations,
+                recommendations,
+                picture_caption,
+                
+                image_url,
+                last_modified
+            });
+        }
+    });
+
+    function saveInspectionData(data) {
+        const dbName = "HV-storage";
+        const storeName = "Inspection_Details";
+
+        const request = indexedDB.open(dbName, 1);
+
+        request.onupgradeneeded = function(event) {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+            }
+        };
+
+        request.onsuccess = function(event) {
+            const db = event.target.result;
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+
+            const addRequest = store.add(data);
+
+            addRequest.onsuccess = function() {
+                alert("Inspection details added successfully!");
+                window.location.href = "/inspections";
+            };
+
+            addRequest.onerror = function(event) {
+                alert("Error adding inspection details: " + event.target.error);
+            };
+        };
+
+        request.onerror = function(event) {
+            alert("Error opening database: " + event.target.error);
+        };
+    }
+</script>
+{% endblock %}
