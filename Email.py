@@ -5,7 +5,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 
 
-def send_Email(pdf, recipient_email, customer):
+def send_Email(pdf, excel, recipient_email, customer):
     try:
         # Email configuration
         sender_email = "enquiries@HVengineers.com.au"  # Replace with your email
@@ -30,6 +30,13 @@ def send_Email(pdf, recipient_email, customer):
             encoders.encode_base64(attachment)
             attachment.add_header('Content-Disposition', 'attachment; filename=inspection_report.pdf')
             message.attach(attachment)
+            
+        if excel is not None:
+            attachment_excel = MIMEBase('application', 'octet-stream')
+            attachment_excel.set_payload(excel.read())
+            encoders.encode_base64(attachment_excel)
+            attachment_excel.add_header('Content-Disposition', 'attachment; filename="inspection_report.xlsx"')
+            message.attach(attachment_excel)
 
         # Send the email using SMTP
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
