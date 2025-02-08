@@ -1,11 +1,18 @@
 from flask import Flask, render_template, request, redirect, send_from_directory, jsonify
-import os
+from PIL import Image
 import weasyprint
 import local as local
 import gunicorn
 import base64
 import urllib.parse
+import openpyxl
+from openpyxl.utils import get_column_letter
+from PyPDF2 import PdfReader, PdfWriter
+from openpyxl.drawing.image import Image as ExcelImage
+import tempfile
 
+import io
+import openpyxl
 
 
 # ipad password 431619
@@ -256,11 +263,14 @@ def generate_report(inspection_id):
             
 
             # Insert revisions data into the local database
-            try:
-                local.insert('Revisions', revisions_data)
-                print("Data inserted successfully.")
-            except Exception as e:
-                print("Error during insert:", e)
+            print(request.form.get('append'))
+            if request.form.get('append') == 'true':
+                    
+                try:
+                    local.insert('Revisions', revisions_data)
+                    print("Data inserted successfully.")
+                except Exception as e:
+                    print("Error during insert:", e)
 
             # Fetch revisions after inserting new revision
             revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
@@ -283,9 +293,13 @@ def generate_report(inspection_id):
         customer = customer_data[0]
 
         # Fetch and sort inspection details
-        inspection_details = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
+        inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
         
         
+        inspection_details = filter_by_time(inspection_details_raw)
+        
+        
+        print('all data got')
         logo_filename = 'hv.png'
         with open(f'static/images/{logo_filename}', 'rb') as image_file:
             logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
@@ -293,7 +307,7 @@ def generate_report(inspection_id):
         logo = f"data:image/png;base64,{logo_base64}"
         
 
-        
+        print('logo processed')
         # Prepare report data
         report_data = {
             "customer": customer,
@@ -305,19 +319,139 @@ def generate_report(inspection_id):
 
         # Generate and return the PDF
         html_content = render_template('report.html', **report_data)
-        pdf = weasyprint.HTML(string=html_content).write_pdf()
-
-        # Save the PDF to the server
+        raw_pdf = weasyprint.HTML(string=html_content).write_pdf()
+        
+        pdf = remove_last_page(raw_pdf)
+        
+        excel = generate_excel(inspection_details)
         
         customer_name = customer.get('name')
         email = request.form.get('email')
         
-        Email.send_Email(pdf, email, customer_name)
+        Email.send_Email(pdf, excel, email, customer_name)
         return render_template('report_ready.html', email=email)
         
     except Exception as e:
+        print(f'error: {e}')
         
         return redirect('/')
+
+
+
+
+
+
+
+def remove_last_page(pdf):
+    reader = PdfReader(io.BytesIO(pdf))
+    writer = PdfWriter()
+    total_pages = len(reader.pages)
+
+    # Add all pages except the last one to the writer
+    for i in range(total_pages - 1):
+        writer.add_page(reader.pages[i])
+
+    # Write the new PDF to a bytes object
+    output_pdf = io.BytesIO()
+    writer.write(output_pdf)
+    output_pdf.seek(0)  # Move the pointer to the beginning of the bytes object
+
+    return output_pdf.getvalue()
+    
+
+def generate_excel(data):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Inspection Details"
+
+    # Include headers, excluding 'display_on_report' and 'inspection_id'
+    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified')] if data else []
+
+    # Write header row
+    for col_num, header in enumerate(headers, 1):
+        ws.cell(row=1, column=col_num, value=header)
+
+    # Write data rows and embed images in the 'image_url' column
+    for row_num, row_data in enumerate(data, 2):
+        col_offset = 0  # Tracks the column index for each row
+        for key in headers:  # Only iterate through headers to ensure excluded columns are skipped
+            value = row_data.get(key)
+            if key == 'image_url' and value and value.startswith("data:image"):
+                try:
+                    base64_str = value.split(',')[1]
+                    image_data = base64.b64decode(base64_str)
+
+                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_image:
+                        temp_image.write(image_data)
+                        temp_image_path = temp_image.name
+
+                    # Handle webp conversion to png if necessary
+                    if 'webp' in value:
+                        with Image.open(temp_image_path) as img:
+                            temp_png = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                            img.convert("RGBA").save(temp_png.name, format="PNG")
+                            temp_image_path = temp_png.name
+
+                    # Embed the image in the 'image_url' column
+                    img = ExcelImage(temp_image_path)
+                    img.height = 150  # Adjust the height for better visibility
+                    img.width = 175   # Adjust the width for better visibility
+                    img_cell = get_column_letter(col_offset + 1) + str(row_num)
+                    ws.add_image(img, img_cell)
+
+                    # Adjust the row height to fit the image
+                    ws.row_dimensions[row_num].height = 100
+                except Exception as e:
+                    print(f"Error embedding image at row {row_num}: {e}")
+            else:
+                # Write other data columns
+                ws.cell(row=row_num, column=col_offset + 1, value=value)
+            col_offset += 1
+
+    # Adjust column widths for better readability
+    for col_num in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col_num)].width = 25
+
+    # Save to a BytesIO stream
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    print('Excel with embedded images generated successfully.')
+    return output
+
+
+def filter_by_time(data):
+    """
+    Sorts a list of dictionaries by the 'time_ranking' key based on a custom ranking order.
+
+    Args:
+        data (list): List of dictionaries with a 'time_ranking' key.
+
+    Returns:
+        list: The sorted list of dictionaries.
+    """
+    # Define the custom ranking order
+    ranking_order = [
+        'Immediate', 
+        'Under 1 month', 
+        'Under 3 months', 
+        'Under 6 months', 
+        'Under 12 months', 
+        'Under 18 months', 
+        'Over 18 months'
+    ]
+
+    # Create a lookup dictionary for the ranking order
+    ranking_map = {value: index for index, value in enumerate(ranking_order)}
+
+    # Sort the data using the ranking order
+    sorted_data = sorted(data, key=lambda x: ranking_map.get(x['time_ranking'], float('inf')))
+
+    return sorted_data
+
+    
+    
+
 
 @app.route('/static/templates/<template_name>')
 def serve_template(template_name):
@@ -327,25 +461,6 @@ def serve_template(template_name):
         return render_template(template_name)
     except:
         return "Template not found", 404
-
-
-
-
-    
-
-from flask import make_response
-
-# Serve the PDF dynamically
-def serve_pdf_dynamically(pdf):
-    # Create a Flask response object with the PDF content
-    response = make_response(pdf)
-    
-    # Set headers for the response to indicate a file download
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = 'inline; filename=inspection_report.pdf'
-
-    
-    return response
 
 if __name__ == '__main__':
     app.run()

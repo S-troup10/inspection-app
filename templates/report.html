@@ -30,32 +30,7 @@
       }
       
       @media print {
-          /* Ensure the footer is fixed at the bottom of the page */
-          .footer {
-            position: fixed;
-            bottom: -10mm; /* Stick to the bottom of the page */
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            width: 100%;
-            padding: 5px 0;
-            background-color: transparent; /* No background color */
-            display: flex;
-            justify-content: center; /* Center content horizontally */
-            gap: 80px; /* Add space between the text and the date */
-        }
-        
-        .footer-text, .footer-date {
-            display: inline-block; /* Keep the elements inline */
-        }
-        .footer-text {
-          transform: translateX(-20px);
-        }
-        .footer-date {
-          transform: translateX(20px);
-        }
+          
       
           .page {
               position: relative; /* Ensure content doesn't overlap the footer */
@@ -91,7 +66,7 @@
       justify-content: space-between; /* Space out items evenly */
       align-items: center; /* Vertically center all content */
       
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1.75px solid #004d99;
       
       height: auto; /* Allow height to adjust to content */
       box-sizing: border-box;
@@ -446,6 +421,7 @@
             
           }
       }
+
     
 
 
@@ -513,14 +489,29 @@
 
 
 
-          </div>
-        
-          <div class="footer">
-            <span class="footer-text">Report by HV Engineers Pty Ltd</span>
-            <span class="footer-date">{{inspection_header.date}}</span>
-          </div>
         </div>
-         
+        
+          <div class="footer" style="
+          position: fixed; 
+          bottom: -10mm; 
+          left: 0; 
+          right: 0; 
+          text-align: center; 
+          font-size: 12px; 
+          color: #666; 
+          width: 100%; 
+          background-color: transparent; 
+          border-top: 2px solid #004d99; /* Divider using border */
+          padding: 10px 0 5px 0; /* Extra top padding so content sits below the divider */
+          display: flex; 
+          justify-content: space-between; 
+          align-items: center;
+      ">
+        <span style="transform: translateX(-20px);">Report by HV Engineers Pty Ltd</span>
+        <span style="transform: translateX(20px);">{{inspection_header.date}}</span>
+      </div>
+      
+    
 
 
 
@@ -567,7 +558,7 @@
             </tbody>
           </table>
         </div>
-        <div class="footer"></div>
+        
       </div>
       <div class="page-break"></div>
 
@@ -606,10 +597,8 @@
           </figure>
       </div>
 
-      <div class="footer">
-        <span class="footer-text">Report by HV Engineers Pty Ltd</span>
-        <span class="footer-date">{{inspection_header.date}}</span>
-      </div>
+      
+  
       </div>
       <div class="page-break"></div>
       {% endfor %}
