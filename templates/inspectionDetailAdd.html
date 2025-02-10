@@ -33,24 +33,20 @@
         </div>
         
         <div class="form-group checkbox-group">
-            <input type="checkbox" id="action_required" name="action_required" value="True">
             <label for="action_required">Action Required</label>
+            <input type="checkbox" id="action_required" name="action_required" style="width: 20px; height: 20px;" value="True">
         </div>
 
         <div class="form-group">
             <label>Consequence:</label>
             <div class="segmented-control">
-                {% for level, value in [('Low', 1), ('Minor', 2), ('Moderate', 3), ('Major', 4)] %}
+                {% for level, value in [('Low', 1), ('Minor', 2), ('Moderate', 3), ('Major', 4), ('Critical', 5)] %}
                 <label>
                     <input type="radio" name="consequence" value="{{ level }}" data-label="{{ level }}" required>
                     <span>{{ level }}</span>
                 </label>
                 {% endfor %}
-                <label>
-                    <input type="radio" name="consequence" value="Other" id="consequence-other" data-label="Other">
-                    <span>Other</span>
-                </label>
-                <input type="text" id="consequence-other-input" name="consequence_other" placeholder="Enter custom consequence" style="display:none;">
+                
             </div>
         </div>
 
@@ -81,30 +77,11 @@
                     <span>{{ probability }}</span>
                 </label>
                 {% endfor %}
-                <label>
-                    <input type="radio" name="probability" value="Other" id="probability-other" data-label="Other">
-                    <span>Other</span>
-                </label>
-                <input type="text" id="probability-other-input" name="probability_other" placeholder="Enter custom probability" style="display:none;">
+                
             </div>
         </div>
 
-        <div class="form-group">
-            <label>Risk Rating:</label>
-            <div class="segmented-control">
-                {% for risk_rating, value in [('low', 1), ('medium', 2), ('high', 3), ('extreme', 4)] %}
-                <label>
-                    <input type="radio" name="risk_rating" value="{{ risk_rating }}" data-label="{{ risk_rating }}" required>
-                    <span>{{ risk_rating }}</span>
-                </label>
-                {% endfor %}
-                <label>
-                    <input type="radio" name="risk_rating" value="Other" id="risk_rating-other" data-label="Other">
-                    <span>Other</span>
-                </label>
-                <input type="text" id="risk_rating-other-input" name="risk_rating_other" placeholder="Enter custom probability" style="display:none;">
-            </div>
-        </div>
+       
 
         
 
@@ -126,7 +103,7 @@
         <div class="form-group">
             <label for="picture">Upload Picture:</label>
             <div id="picture-upload-wrapper">
-                <input type="file" id="picture" name="picture" accept="image/*">
+                <input type="file" id="picture" name="picture" accept="image/*" required>
             </div>
             <img id="picture-preview" src="#" alt="Picture Preview" style="display: none; max-width: 100px;">
         </div>
@@ -213,6 +190,9 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
             reader.onload = function(e) {
                 preview.src = e.target.result;
                 preview.style.display = 'block';
+                preview.style.width = '500px';
+                preview.style.maxHeight = '500px';
+                preview.style.maxWidth = '500px';
             };
             reader.readAsDataURL(file);
         }
@@ -238,14 +218,12 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
         const probability = document.querySelector('input[name="probability"]:checked')?.dataset.label;
         const consequence = document.querySelector('input[name="consequence"]:checked')?.dataset.label;
         const time_ranking = document.querySelector('input[name="time_ranking"]:checked')?.dataset.label;
-        const risk_rating = document.querySelector('input[name="risk_rating"]:checked')?.dataset.label;
+       
 
         // Get custom values if "Other" is selected
-        const customConsequence = document.getElementById('consequence-other-input').value;
+        
         const customTimeRanking = document.getElementById('time-ranking-other-input').value;
-        const customProbability = document.getElementById('probability-other-input').value;
-        const customRisk_rating = document.getElementById('risk_rating-other-input').value;
-
+        
         const observations = document.getElementById('observations').value;
         const recommendations = document.getElementById('recommendations').value;
         const picture_caption = document.getElementById('picture_caption').value;
@@ -265,10 +243,10 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
                     area,
                     item,
                     action_required,
-                    probability: customProbability || probability,
-                    consequence: customConsequence || consequence,
+                    probability:  probability,
+                    consequence:  consequence,
                     time_ranking: customTimeRanking || time_ranking,
-                    risk_rating: customRisk_rating || risk_rating,
+                    
                     unit,
                     observations,
                     recommendations,
@@ -285,10 +263,10 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
                 area,
                 item,
                 action_required,
-                probability: customProbability || probability,
-                consequence: customConsequence || consequence,
+                probability:  probability,
+                consequence:  consequence,
                 time_ranking: customTimeRanking || time_ranking,
-                risk_rating: customRisk_rating || risk_rating,
+                
                 unit,
                 observations,
                 recommendations,
@@ -317,12 +295,12 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
             const db = event.target.result;
             const transaction = db.transaction(storeName, 'readwrite');
             const store = transaction.objectStore(storeName);
-
+ 
             const addRequest = store.add(data);
 
             addRequest.onsuccess = function() {
                 alert("Inspection details added successfully!");
-                window.location.href = "/inspections";
+                window.location.href = "/inspection-Details";
             };
 
             addRequest.onerror = function(event) {

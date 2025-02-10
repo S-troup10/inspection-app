@@ -228,6 +228,9 @@ document.getElementById('action_required').checked = parsedData.action_required 
                 imagePreview.alt = "Uploaded Picture";
                 imagePreview.id = "currentImage";
                 imagePreview.style.width = "100px";
+                imagePreview.style.width = '500px';
+                imagePreview.style.maxHeight = '500px';
+                imagePreview.style.maxWidth = '500px';
                 document.getElementById("imagePreviewContainer").appendChild(imagePreview);
             };
             reader.readAsDataURL(file);

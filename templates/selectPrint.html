@@ -3,11 +3,7 @@
 {% block title %}View Inspections{% endblock %}
 
 {% block content %}
-<script src="/static/js/db.js"></script>
-<script>
-    window.addEventListener('load', () => {
-        sync_client_with_server();
-    });
+
 </script>
 
 <section class="inspection-section">
@@ -28,7 +24,8 @@
             </thead>
             <tbody>
                 {% for inspection in inspections %}
-                <tr onclick="openModal({{ inspection.inspection_id }}, '{{ inspection.title }}')">
+                <tr onclick="openModal({{ inspection.inspection_id }}, '{{ inspection.title }}', event)">
+
                     <td>{{ inspection.title }}</td>
                     <td>{{ inspection.date }}</td>
                     <td>{{ inspection.description }}</td>
@@ -108,24 +105,40 @@
     const modal = document.getElementById('inspection-modal');
     const spinner = document.getElementById('loading-spinner');
 
-    function openModal(inspectionId, inspectionTitle) {
-        // Set inspection ID in the form
-        document.getElementById('inspection-id').value = inspectionId;
+    let previousHighlightedRow = null;  // Keep track of the previously highlighted row
 
-        const form = document.getElementById('inspection-form');
-        form.action = '/inspection-Print/' + inspectionId;
+function openModal(inspectionId, inspectionTitle) {
+    // Set inspection ID in the form
+    document.getElementById('inspection-id').value = inspectionId;
 
-        // Display the modal by adding the show class
-        modal.classList.add('show');
+    // Get the row that was clicked using event.currentTarget
+    const currentRow = event.currentTarget;
 
-        // Set focus on the first focusable element inside the modal
-        const focusable = modal.querySelector('input, button, select, textarea');
-        if (focusable) focusable.focus();
+    // Remove the highlight from the previously highlighted row
+    if (previousHighlightedRow) {
+        previousHighlightedRow.classList.remove('highlighted');
     }
+
+    // Highlight the current row
+    currentRow.classList.add('highlighted');
+    previousHighlightedRow = currentRow;  // Update the reference to the highlighted row
+
+    const form = document.getElementById('inspection-form');
+    form.action = '/inspection-Print/' + inspectionId;
+
+    // Display the modal by adding the show class
+    modal.classList.add('show');
+
+    // Set focus on the first focusable element inside the modal
+    const focusable = modal.querySelector('input, button, select, textarea');
+    if (focusable) focusable.focus();
+}
+
 
     function closeModal() {
         // Hide the modal by removing the show class
         modal.classList.remove('show');
+        currentRow.classList.remove('highlighted')
     }
 
     function toggleOtherInput() {
@@ -157,7 +170,7 @@
         setTimeout(() => {
             // Submit the form via AJAX or normal form submission (here we're using regular form submit)
             form.submit();  // Proceed with the normal form submission after spinner is shown
-        }, 1000);  // Simulate a 1-second delay before submitting
+        }, 10);  // Simulate a 1-second delay before submitting
     });
 
     // Close modal when clicking outside of it
@@ -169,6 +182,12 @@
 </script>
 
 <style>
+    .highlighted {
+        background-color:rgb(7, 132, 241);  /* Light blue color */
+        border: 4px solid #007bff;
+        transition: background-color 0.3s ease, border 0.3s ease;
+    }
+    
     .inspection-section {
         margin: 20px;
     }

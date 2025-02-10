@@ -39,22 +39,7 @@ def add_security_headers(response):
 @app.route('/sync/<table_name>', methods=['GET'])
 def sync_customer(table_name):
     table = local.fetch(table_name)
-    for record in table:
-        if record.get("image_url"):
-            try:
-                with open(record['image_url'], 'rb') as file:
-                        # Read the file content
-                    file_content = file.read()
-                        
-                        # Encode the content to Base64
-                    encoded_content = base64.b64encode(file_content)
-                        
-                        # Convert bytes to string
-                    record['image_url'] = encoded_content.decode('utf-8')  # Store Base64 as a string
-
-                    
-            except Exception as e:
-                print(f"Error reading or encoding image for record {record.get('customer_id')}: ")
+ 
     return jsonify(table)
 
 
@@ -69,7 +54,7 @@ def sync_process():
             return jsonify({"error": "No data received."}), 400
 
         for table_name, records in data.items():
-            print(f"Processing {len(records)} records for table: {table_name}")
+            
 
             # Iterate through the records and upsert them into the local database
             for record in records:
@@ -295,8 +280,8 @@ def generate_report(inspection_id):
         # Fetch and sort inspection details
         inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
         
-        
-        inspection_details = filter_by_time(inspection_details_raw)
+        inspection_details = calculate_risk(inspection_details_raw)
+        inspection_details = filter_by_time(inspection_details)
         
         
         print('all data got')
@@ -338,6 +323,59 @@ def generate_report(inspection_id):
 
 
 
+
+def calculate_risk(data):
+    """
+    Calculates a risk rating for each record based on 'probability' and 'consequence'.
+    
+    Args:
+        data (list): List of dictionaries, each containing 'probability' and 'consequence' keys.
+    
+    Returns:
+        list: The original list with an added 'risk_rating' key for each record.
+    """
+    # Map for converting string values to numerical scores
+    probability_map = {
+        'Almost Certain': 5,
+        'Likely': 4,
+        'Possible': 3,
+        'Unlikely': 2,
+        'Very Rare': 1
+    }
+
+    consequence_map = {
+        'Critical': 5,
+        'Major': 4,
+        'Moderate': 3,
+        'Minor': 2,
+        'Low': 1
+    }
+    
+    # Function to determine risk rating based on the combined score
+    def get_risk_rating(score):
+        if 8 <= score <= 10:
+            return 'Extreme'
+        elif 6 <= score <= 7:
+            return 'High'
+        elif score == 5:
+            return 'Medium'
+        else:
+            return 'Low'
+    
+    # Iterate over each record and calculate the risk rating
+    for record in data:
+        # Get the numerical values for probability and consequence
+        probability_score = probability_map.get(record.get('probability'), 1)
+        consequence_score = consequence_map.get(record.get('consequence'), 1)
+        
+        # Calculate the combined risk score
+        combined_score = probability_score + consequence_score
+        print(get_risk_rating(combined_score))
+        # Assign the risk rating
+        record['risk_rating'] = get_risk_rating(combined_score)
+        
+    
+    return data
 
 
 
@@ -385,12 +423,19 @@ def generate_excel(data):
                         temp_image.write(image_data)
                         temp_image_path = temp_image.name
 
-                    # Handle webp conversion to png if necessary
-                    if 'webp' in value:
-                        with Image.open(temp_image_path) as img:
-                            temp_png = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-                            img.convert("RGBA").save(temp_png.name, format="PNG")
-                            temp_image_path = temp_png.name
+                        # Handle WebP or MPO conversion to PNG if necessary
+                        if 'webp' in value or 'mpo' in value:
+                            with Image.open(temp_image_path) as img:
+                                temp_png = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+                                img = img.convert("RGBA")
+                                
+                                # Rotate for MPO images
+                                if 'mpo' in value:
+                                    img = img.rotate(180, expand=True)
+                                
+                                img.save(temp_png.name, format="PNG")
+                                temp_image_path = temp_png.name
+
 
                     # Embed the image in the 'image_url' column
                     img = ExcelImage(temp_image_path)
@@ -402,7 +447,7 @@ def generate_excel(data):
                     # Adjust the row height to fit the image
                     ws.row_dimensions[row_num].height = 100
                 except Exception as e:
-                    print(f"Error embedding image at row {row_num}: {e}")
+                    pass
             else:
                 # Write other data columns
                 ws.cell(row=row_num, column=col_offset + 1, value=value)
@@ -416,7 +461,7 @@ def generate_excel(data):
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
-    print('Excel with embedded images generated successfully.')
+
     return output
 
 
@@ -450,17 +495,7 @@ def filter_by_time(data):
     return sorted_data
 
     
-    
 
-
-@app.route('/static/templates/<template_name>')
-def serve_template(template_name):
-    print('this was used')
-    try:
-        # Render the template when requested
-        return render_template(template_name)
-    except:
-        return "Template not found", 404
 
 if __name__ == '__main__':
     app.run()
