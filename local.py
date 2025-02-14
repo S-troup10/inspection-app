@@ -2,8 +2,8 @@ import os
 from supabase import create_client, Client
 
 # Set your Supabase credentials here
-SUPABASE_URL = 'https://djlpjrhedxzkwudzkcik.supabase.co'
-SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbHBqcmhlZHh6a3d1ZHprY2lrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjMzNjg3OSwiZXhwIjoyMDQ3OTEyODc5fQ.JX1iDHppSTB2Rijw1s3KHabPfzJPwTefcUvs1yYd8-M'
+SUPABASE_URL = 'https://zmusspsqfcmjpqnwkpmx.supabase.co'
+SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdXNzcHNxZmNtanBxbndrcG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk1MDQ3MDYsImV4cCI6MjA1NTA4MDcwNn0.UmhLQEUxj424-2TbVOYrt_c5y5WFC5RWNmRaiMaj0nA'
 
 # Create a Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
