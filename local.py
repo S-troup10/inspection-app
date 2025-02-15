@@ -31,22 +31,35 @@ def update(table_name, data, conditions):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def fetch(table_name, conditions=None):
+def fetch(table_name, conditions=None, exclude_image_url=False):
     """
     Fetches records from the specified table, optionally filtered by conditions.
+    If exclude_image_url is True, the image_url column will be excluded.
     """
     try:
-        # Fetch records based on conditions
-        if conditions:
-            response = supabase.table(table_name).select("*").match(conditions).execute()
+        # Construct the select query
+        
+        if exclude_image_url:
+            
+            columns_to_select = {
+            "Customer": "customer_id, name, site",
+            "Inspection_Header": "inspection_id, description, summary, customer_id, date, title",
+            "Inspection_Details": "detail_id, inspection_id, area, item, action_required, probability, consequence, time_ranking, unit, observations, recommendations, picture_caption",
+        }
+            query = supabase.table(table_name).select(columns_to_select[table_name])
+            
         else:
-            response = supabase.table(table_name).select("*").execute()
-
-        # Print the entire response object to inspect its structure
+            query = supabase.table(table_name).select("*")
+        
+        # Apply conditions if provided
+        if conditions:
+            query = query.match(conditions)
+        
+        response = query.execute()
+        
+        # Return only the data part of the response
         return response.data
 
-        # Check if the request was successful and return the data
-        
     except Exception as e:
         print(f"An error occurred: {e}")
         return []

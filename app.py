@@ -39,7 +39,7 @@ def add_security_headers(response):
 @app.route('/sync/<table_name>', methods=['GET'])
 def sync_customer(table_name):
     table = local.fetch(table_name)
- 
+    
     return jsonify(table)
 
 
@@ -186,7 +186,7 @@ def inspection_summary():
 @app.route('/inspection-Add')
 def Inspection_add():
     #pass a table of all the customers to display the name of the customers in the form
-    customers = local.fetch('Customer')
+    customers = local.fetch('Customer', exclude_image_url=True)
     
     return render_template('/inspectionsAdd.html', customers=customers)
 
@@ -205,16 +205,16 @@ def edit_inspection():
 def select_inspections():
     # Handle GET request (render the page)
     # Fetch all inspection headers
-    inspections = local.fetch('Inspection_Header')
+    inspections = local.fetch('Inspection_Header', exclude_image_url=True)
 
     # Fetch customer details and map customer_id to customer name
-    customers = local.fetch('Customer')
+    customers = local.fetch('Customer', exclude_image_url=True)
     customer_map = {customer['customer_id']: customer['name'] for customer in customers}
 
     # Add customer name to each inspection
     filtered_inspections = []
     for inspection in inspections:
-        details_count = len(local.fetch('Inspection_Details', {'inspection_id': inspection.get('inspection_id')}))
+        details_count = len(local.fetch('Inspection_Details', {'inspection_id': inspection.get('inspection_id')}, exclude_image_url=True))
         if details_count > 0:
             inspection['details_count'] = details_count
             filtered_inspections.append(inspection)
@@ -227,99 +227,83 @@ def select_inspections():
 
 import Email
 
+import gc
+import tempfile
+
 @app.route('/inspection-Print/<int:inspection_id>', methods=['POST'])
 def generate_report(inspection_id):
-    print("Function generate_report called with method:", request.method)
-
     try:
-        if request.method == 'POST':
-            date_issued = request.form.get('date_issued')
-            version = request.form.get('version')
-            issued_by = request.form.get('issued_by')
-            other_version = request.form.get('other_version') if version == 'other' else None
-
-            revisions_data = {
-                "inspection_id": inspection_id,
-                "date": date_issued,
-                "status": other_version if other_version else version,
-                "detail": other_version if other_version else version,
-                "issued_by": issued_by
-            }
-            
-
-            # Insert revisions data into the local database
-            print(request.form.get('append'))
-            if request.form.get('append') == 'true':
-                    
-                try:
-                    local.insert('Revisions', revisions_data)
-                    print("Data inserted successfully.")
-                except Exception as e:
-                    print("Error during insert:", e)
-
-            # Fetch revisions after inserting new revision
-            revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-
-        # Fetch revisions regardless of POST
-        revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-
-        # Fetch inspection header
+        # Step 1: Fetch inspection data
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
         if not inspection_header:
-            
             return redirect('/select-Inspections')
         inspection_header = inspection_header[0]
 
-        # Fetch customer data
         customer_data = local.fetch('Customer', {'customer_id': inspection_header.get('customer_id')})
         if not customer_data:
-            
             return "Customer not found", 404
         customer = customer_data[0]
+        
+        # Free memory after fetching and processing data
+        del customer_data
+        gc.collect()
 
-        # Fetch and sort inspection details
+        # Step 2: Process inspection details in smaller chunks
         inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
+        inspection_details = filter_by_time(calculate_risk(inspection_details_raw))
         
-        inspection_details = calculate_risk(inspection_details_raw)
-        inspection_details = filter_by_time(inspection_details)
-        
-        
-        print('all data got')
-        logo_filename = 'hv.png'
-        with open(f'static/images/{logo_filename}', 'rb') as image_file:
+        # Free memory after processing
+        del inspection_details_raw
+        gc.collect()
+
+        # Step 3: Prepare logo (small, quick operation)
+        with open(f'static/images/hv.png', 'rb') as image_file:
             logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
-            
         logo = f"data:image/png;base64,{logo_base64}"
         
+        # Free memory after preparing logo
+        del logo_base64
+        gc.collect()
 
-        print('logo processed')
-        # Prepare report data
+        # Step 4: Generate HTML for PDF
         report_data = {
             "customer": customer,
             "inspection_header": inspection_header,
             "rows": inspection_details,
-            "revisions": revisions,  # Use the fetched revisions here
-            "logo": logo  # Full path to logo
+            "revisions": local.fetch('Revisions', {'inspection_id': inspection_id}),
+            "logo": logo
         }
-
-        # Generate and return the PDF
-        html_content = render_template('report.html', **report_data)
-        raw_pdf = weasyprint.HTML(string=html_content).write_pdf()
         
+        html_content = render_template('report.html', **report_data)
+        del report_data
+        gc.collect()
+
+        # Step 5: Generate and Optimize PDF
+        raw_pdf = weasyprint.HTML(string=html_content).write_pdf()
         pdf = remove_last_page(raw_pdf)
         
+        del raw_pdf, html_content
+        gc.collect()
+
+        # Step 6: Generate Excel
         excel = generate_excel(inspection_details)
+        del inspection_details
+        gc.collect()
         
-        customer_name = customer.get('name')
+        # Step 7: Send email and delete large files
         email = request.form.get('email')
-        
+        customer_name = customer.get('name')
         Email.send_Email(pdf, excel, email, customer_name)
+        
+        del pdf, excel, customer
+        gc.collect()
+        print_memory_usage()
         return render_template('report_ready.html', email=email)
-        
+
     except Exception as e:
-        print(f'error: {e}')
-        
+        print(f"Error: {e}")
         return redirect('/')
+
 
 
 
@@ -381,6 +365,7 @@ def calculate_risk(data):
 
 
 def remove_last_page(pdf):
+    print_memory_usage()
     reader = PdfReader(io.BytesIO(pdf))
     writer = PdfWriter()
     total_pages = len(reader.pages)
@@ -398,6 +383,7 @@ def remove_last_page(pdf):
     
 
 def generate_excel(data):
+    print_memory_usage()
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Inspection Details"
@@ -495,6 +481,12 @@ def filter_by_time(data):
     return sorted_data
 
     
+import psutil
+
+def print_memory_usage():
+    process = psutil.Process()  # Get the current process
+    memory_in_mb = process.memory_info().rss / 1024 ** 2  # Resident Set Size in MB
+    print(f"Current memory usage: {memory_in_mb:.2f} MB")
 
 
 if __name__ == '__main__':
