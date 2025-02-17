@@ -44,52 +44,49 @@ def sync_customer(table_name):
 
 
 
+import gc
+
 @app.route('/sync/process', methods=['POST'])
 def sync_process():
     try:
-        # Parse the incoming JSON data
         data = request.json
-
         if not data:
             return jsonify({"error": "No data received."}), 400
 
+        # Define primary keys for each table
+        primary_keys = {
+            "Customer": "customer_id",
+            "Inspection_Header": "inspection_id",
+            "Inspection_Details": "detail_id"
+        }
+
         for table_name, records in data.items():
-            
+            primary_key = primary_keys.get(table_name)
 
-            # Iterate through the records and upsert them into the local database
             for record in records:
-                if 'image_url' in record and record['image_url']:
-                    record['image_url'] = urllib.parse.unquote(record['image_url'])
                 try:
-                    # Check if the record exists based on the primary key
-                    primary_key = None
+                    # Decode image URL if present
+                    if 'image_url' in record and record['image_url']:
+                        record['image_url'] = urllib.parse.unquote(record['image_url'])
 
-                    # Define primary keys for each table
-                    primary_keys = {
-                        "Customer": "customer_id",
-                        "Inspection_Header": "inspection_id",
-                        "Inspection_Details": "detail_id"
-                    }
-
-                    if table_name in primary_keys:
-                        primary_key = primary_keys[table_name]
-
+                    # Check if the record exists only if a primary key is defined
                     if primary_key and primary_key in record:
-                        existing_record_list = local.fetch(table_name, {primary_key: record[primary_key]})
-                        existing_record = existing_record_list
+                        existing_record = local.fetch(table_name, {primary_key: record[primary_key]})
 
                         if existing_record:
-                            
-                            # Update the record if it exists
                             local.update(table_name, record, {primary_key: record[primary_key]})
                         else:
-                            # Insert the record if it does not exist
-                            
                             local.insert(table_name, record)
+
+                        # Explicitly delete fetched record to free memory
+                        del existing_record  
+                    
                     else:
-                        
-                        # Insert the record if no primary key is provided
+                        # Insert the record if no primary key validation is needed
                         local.insert(table_name, record)
+
+                    # Force garbage collection after processing each record
+                    gc.collect()
 
                 except Exception as e:
                     print(f"Error processing record for table {table_name}: {e}")
@@ -99,9 +96,6 @@ def sync_process():
     except Exception as e:
         print(f"Error in sync_process: {e}")
         return jsonify({"error": "An error occurred during synchronization.", "details": str(e)}), 500
-
-
-
 
 
 
