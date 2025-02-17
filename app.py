@@ -18,6 +18,11 @@ import openpyxl
 # ipad password 431619
 
 
+def print_memory_usage():
+    process = psutil.Process()  # Get the current process
+    memory_in_mb = process.memory_info().rss / 1024 ** 2  # Resident Set Size in MB
+    print(f"Current memory usage: {memory_in_mb:.2f} MB")
+
 app = Flask(__name__)
 app.secret_key = 'ddd'
 
@@ -65,13 +70,20 @@ def sync_process():
 
             for record in records:
                 try:
-                    # Decode image URL if present
+                    # Decode image URL if present and free memory after use
                     if 'image_url' in record and record['image_url']:
                         record['image_url'] = urllib.parse.unquote(record['image_url'])
+                        
+                        # Decode base64 string only if needed (e.g., for local storage)
+
+                        # Free memory by removing the base64 string after processing
+                        del record['image_url']
+                        gc.collect()
 
                     # Check if the record exists only if a primary key is defined
                     if primary_key and primary_key in record:
                         existing_record = local.fetch(table_name, {primary_key: record[primary_key]})
+                        print_memory_usage()
 
                         if existing_record:
                             local.update(table_name, record, {primary_key: record[primary_key]})
@@ -80,12 +92,13 @@ def sync_process():
 
                         # Explicitly delete fetched record to free memory
                         del existing_record  
-                    
+
                     else:
                         # Insert the record if no primary key validation is needed
                         local.insert(table_name, record)
 
                     # Force garbage collection after processing each record
+                    print_memory_usage()
                     gc.collect()
 
                 except Exception as e:
@@ -96,18 +109,6 @@ def sync_process():
     except Exception as e:
         print(f"Error in sync_process: {e}")
         return jsonify({"error": "An error occurred during synchronization.", "details": str(e)}), 500
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
