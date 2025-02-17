@@ -66,12 +66,17 @@ def sync_process():
             primary_key = primary_keys.get(table_name)
 
             for record in records:
+                
                 try:
                     # Decode image URL if present and free memory after use
                     if 'image_url' in record and record['image_url']:
                         record['image_url'] = urllib.parse.unquote(record['image_url'])
                         print_memory_usage()
-                        # Immediately remove image data to free memory
+
+                        # You can store the image URL in a separate variable if you still need it
+                        # Now, you can use the decoded_image_url as needed in the record or later
+
+                        # Remove image_url from the record after it's been used
                         del record['image_url']
                         gc.collect()
 
