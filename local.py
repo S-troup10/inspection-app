@@ -1,6 +1,6 @@
 import os
 from supabase import create_client, Client
-
+import gc
 # Set your Supabase credentials here
 SUPABASE_URL = 'https://zmusspsqfcmjpqnwkpmx.supabase.co'
 SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdXNzcHNxZmNtanBxbndrcG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk1MDQ3MDYsImV4cCI6MjA1NTA4MDcwNn0.UmhLQEUxj424-2TbVOYrt_c5y5WFC5RWNmRaiMaj0nA'
@@ -65,5 +65,40 @@ def fetch(table_name, conditions=None, exclude_image_url=False):
         return []
 
 
+
+import gc
+
+import gc
+
+def fetch_one_by_one(table_name, filters):
+    """Fetch records one at a time using pagination in Supabase."""
+    
+    # Start from the first record
+    offset = 0
+
+    while True:
+        # Start the query with the table
+        query = supabase.table(table_name).select("*")
+        
+        # Apply filters dynamically using eq or other methods based on the filter
+        for key, value in filters.items():
+            query = query.eq(key, value)  # You can replace .eq() with other methods like .like(), .lt() etc.
+
+        # Fetch one record at a time using range and filters
+        response = query.range(offset, offset).execute()
+
+        records = response.data
+        if not records:
+            break
+
+        # Yield the first record (since page_size is 1, only 1 record per request)
+        yield records[0]
+
+        # Explicitly delete the record after processing to free memory
+        del records[0]
+        gc.collect()
+
+        # Move to the next record
+        offset += 1  # Since we're fetching one record at a time, we increment offset by 1
 
 
