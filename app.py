@@ -10,14 +10,12 @@ from openpyxl.utils import get_column_letter
 from PyPDF2 import PdfReader, PdfWriter
 from openpyxl.drawing.image import Image as ExcelImage
 import tempfile
-
+import gc
 import io
 import openpyxl
 
 
 # ipad password 431619
-
-
 def print_memory_usage():
     process = psutil.Process()  # Get the current process
     memory_in_mb = process.memory_info().rss / 1024 ** 2  # Resident Set Size in MB
@@ -43,13 +41,12 @@ def add_security_headers(response):
 
 @app.route('/sync/<table_name>', methods=['GET'])
 def sync_customer(table_name):
-    table = local.fetch(table_name)
+    return local.fetch(table_name)
     
-    return jsonify(table)
 
 
 
-import gc
+
 
 @app.route('/sync/process', methods=['POST'])
 def sync_process():
@@ -73,32 +70,31 @@ def sync_process():
                     # Decode image URL if present and free memory after use
                     if 'image_url' in record and record['image_url']:
                         record['image_url'] = urllib.parse.unquote(record['image_url'])
-                        
-                        # Decode base64 string only if needed (e.g., for local storage)
-
-                        # Free memory by removing the base64 string after processing
+                        print_memory_usage()
+                        # Immediately remove image data to free memory
                         del record['image_url']
                         gc.collect()
 
-                    # Check if the record exists only if a primary key is defined
+                    # Fetch record one at a time if primary key exists
+                    existing_record = None
                     if primary_key and primary_key in record:
-                        existing_record = local.fetch(table_name, {primary_key: record[primary_key]})
+                        # Use the generator to fetch one record at a time
+                        existing_record = next(local.fetch_one_by_one(table_name, {primary_key: record[primary_key]}), None)
                         print_memory_usage()
-
                         if existing_record:
                             local.update(table_name, record, {primary_key: record[primary_key]})
                         else:
                             local.insert(table_name, record)
 
-                        # Explicitly delete fetched record to free memory
-                        del existing_record  
+                        # Explicitly delete fetched record after use to free memory
+                        del existing_record
+                        gc.collect()
 
                     else:
-                        # Insert the record if no primary key validation is needed
                         local.insert(table_name, record)
+                        print_memory_usage()
 
                     # Force garbage collection after processing each record
-                    print_memory_usage()
                     gc.collect()
 
                 except Exception as e:
@@ -109,6 +105,9 @@ def sync_process():
     except Exception as e:
         print(f"Error in sync_process: {e}")
         return jsonify({"error": "An error occurred during synchronization.", "details": str(e)}), 500
+
+
+
 
 
 
