@@ -13,7 +13,7 @@ import tempfile
 import gc
 import io
 import openpyxl
-
+from io import BytesIO
 
 # ipad password 431619
 def print_memory_usage():
@@ -73,11 +73,10 @@ def sync_process():
                         record['image_url'] = urllib.parse.unquote(record['image_url'])
                         print_memory_usage()
 
-                        # You can store the image URL in a separate variable if you still need it
-                        # Now, you can use the decoded_image_url as needed in the record or later
+
 
                         # Remove image_url from the record after it's been used
-                        del record['image_url']
+                        
                         gc.collect()
 
                     # Fetch record one at a time if primary key exists
@@ -226,12 +225,50 @@ def select_inspections():
 
 import Email
 
-import gc
-import tempfile
+
+
+
+
+
+
+
+
+from weasyprint import HTML
+from PyPDF2 import PdfMerger
+
 
 @app.route('/inspection-Print/<int:inspection_id>', methods=['POST'])
 def generate_report(inspection_id):
     try:
+        if request.method == 'POST':
+            date_issued = request.form.get('date_issued')
+            version = request.form.get('version')
+            issued_by = request.form.get('issued_by')
+            other_version = request.form.get('other_version') if version == 'other' else None
+
+            revisions_data = {
+                "inspection_id": inspection_id,
+                "date": date_issued,
+                "status": other_version if other_version else version,
+                "detail": other_version if other_version else version,
+                "issued_by": issued_by
+            }
+            
+
+            # Insert revisions data into the local database
+            print(request.form.get('append'))
+            if request.form.get('append') == 'true':
+                    
+                try:
+                    local.insert('Revisions', revisions_data)
+                    print("Data inserted successfully.")
+                except Exception as e:
+                    print("Error during insert:", e)
+
+
+        
+    
+        
         # Step 1: Fetch inspection data
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
         if not inspection_header:
@@ -242,29 +279,26 @@ def generate_report(inspection_id):
         if not customer_data:
             return "Customer not found", 404
         customer = customer_data[0]
-        
-        # Free memory after fetching and processing data
+
         del customer_data
         gc.collect()
 
-        # Step 2: Process inspection details in smaller chunks
+        # Step 2: Process inspection details
         inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
         inspection_details = filter_by_time(calculate_risk(inspection_details_raw))
-        
-        # Free memory after processing
+
         del inspection_details_raw
         gc.collect()
 
-        # Step 3: Prepare logo (small, quick operation)
-        with open(f'static/images/hv.png', 'rb') as image_file:
+        # Step 3: Prepare logo
+        with open('static/images/hv.png', 'rb') as image_file:
             logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
         logo = f"data:image/png;base64,{logo_base64}"
-        
-        # Free memory after preparing logo
+
         del logo_base64
         gc.collect()
 
-        # Step 4: Generate HTML for PDF
+        # Step 4: Prepare HTML for report sections
         report_data = {
             "customer": customer,
             "inspection_header": inspection_header,
@@ -272,36 +306,76 @@ def generate_report(inspection_id):
             "revisions": local.fetch('Revisions', {'inspection_id': inspection_id}),
             "logo": logo
         }
+
+        # Prepare all the HTML pages
+        pages = []
+        pages.append(render_template('report-title.html', **report_data))
+        pages.append(render_template('report-table.html', **report_data))
+        detail_htmls = [render_template('report-detail.html', row=row, **report_data) for row in inspection_details]
         
-        html_content = render_template('report.html', **report_data)
-        del report_data
+        for page in detail_htmls:
+            pages.append(page)
+        
+        # Clean up the report_data and details
+        del detail_htmls, report_data
         gc.collect()
 
-        # Step 5: Generate and Optimize PDF
-        raw_pdf = weasyprint.HTML(string=html_content).write_pdf()
-        pdf = remove_last_page(raw_pdf)
-        
-        del raw_pdf, html_content
-        gc.collect()
+        # Step 5: Generate PDFs from each HTML string in memory
+        pdf_files = []
 
-        # Step 6: Generate Excel
+        for page_html in pages:
+            pdf_bytes = HTML(string=page_html).write_pdf()  # Generate PDF from HTML
+            pdf_files.append(BytesIO(pdf_bytes))  # Store each PDF in a BytesIO object
+
+        # Step 6: Merge PDFs using PdfMerger
+        merged_pdf = PdfMerger()
+
+        for pdf in pdf_files:
+            pdf.seek(0)  # Reset the buffer before appending
+            merged_pdf.append(pdf)
+
+        # Create a BytesIO buffer to store the final merged PDF
+        final_pdf_buffer = BytesIO()
+        merged_pdf.write(final_pdf_buffer)
+        final_pdf_buffer.seek(0)
+        merged_pdf.close()
+
+        print("PDF merged successfully.")
+
+        # Step 7: Generate Excel
         excel = generate_excel(inspection_details)
+
         del inspection_details
         gc.collect()
-        
-        # Step 7: Send email and delete large files
+
+        # Step 8: Send email with PDF and Excel attachments
         email = request.form.get('email')
         customer_name = customer.get('name')
-        Email.send_Email(pdf, excel, email, customer_name)
+
         
-        del pdf, excel, customer
+        final_pdf_bytes = final_pdf_buffer.getvalue()
+        # Send the email with the merged PDF and Excel file as attachments (both in memory)
+        Email.send_Email(final_pdf_bytes, excel, email, customer_name)
+
+        # Clean up
+        del excel, customer
         gc.collect()
-        print_memory_usage()
+
+        # Return confirmation page
         return render_template('report_ready.html', email=email)
 
     except Exception as e:
         print(f"Error: {e}")
         return redirect('/')
+
+
+
+
+
+
+
+
+
 
 
 
@@ -443,7 +517,7 @@ def generate_excel(data):
         ws.column_dimensions[get_column_letter(col_num)].width = 25
 
     # Save to a BytesIO stream
-    output = io.BytesIO()
+    output = BytesIO()
     wb.save(output)
     output.seek(0)
 

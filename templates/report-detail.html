@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspection Report - Detailed</title>
+    <style>
+        /* Set page to landscape */
+        @page {
+            size: A4 landscape;
+            margin: 10mm 20mm 0mm 20mm;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            min-height: 100%; /* Ensure body takes full height */
+            padding-bottom: 50px; /* Space reserved for footer */
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #004d99;
+            padding-bottom: 10px;
+        }
+
+        .header img {
+            max-height: 80px;
+            max-width: 150px;
+        }
+
+        .header .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #004d99;
+            text-align: center;
+            flex-grow: 1;
+            margin: 0;
+        }
+
+        .customer-info {
+            text-align: right;
+            font-size: 12px;
+            color: #333;
+            max-width: 30%;
+        }
+
+        .customer-info h2 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #004d99;
+            margin: 5px 0;
+        }
+
+        .customer-info .description {
+            font-size: 12px;
+            color: #777;
+            margin: 2px 0;
+        }
+
+        /* Inspection Details */
+        .inspection-details {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .text {
+            font-size: 12px;
+            margin: 10px 2px;
+            max-width: 60%;
+            display: flex;
+            flex-direction: column; /* Arrange items in a vertical column */
+            justify-content: space-between; /* Distribute space evenly between text elements */
+            height: 130mm; /* Allow it to take up the full height of the container */
+        }
+        
+
+        .text h3 {
+            font-size: 18px;
+            color: #004d99;
+            font-weight: bold;
+        }
+
+        .text p {
+            margin: 5px 0;
+        }
+
+        figure {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 35%;
+        }
+
+        figcaption {
+            font-size: 12px;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        img {
+            max-width: 500px;
+            max-height:800px
+            height: auto;
+            margin-top: 10px;
+        }
+
+        /* Footer - Fixed at the very bottom */
+        .footer {
+            position: fixed;
+            bottom: 7mm;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            padding-top: 6px;
+            display: flex;
+            border-top: 2px solid #004d99;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 10px; /* Ensure space for footer content */
+        }
+
+        .footer .contact-info {
+            font-weight: bold;
+            color: #004d99;
+        }
+
+        .footer .company-info {
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        
+        <div class="page">
+            <!-- Header (Same as Title Page) -->
+            <div class="header">
+                <img src="{{ logo }}" alt="Customer Logo" />
+                <div class="title">Inspection Report - Detail Sheet</div>
+                <div class="customer-info">
+                    <h2>{{ customer.name }}</h2>
+                    <p class="description">{{ inspection_header.description }}</p>
+                </div>
+            </div>
+
+            <!-- Inspection Details -->
+            <div class="inspection-details">
+                <div class="text">
+                    <h3>Inspection Details for: {{ row.item }}</h3>
+                    <p><strong>Area:</strong> {{ row.area }}</p>
+                    <p><strong>Unit:</strong> {{ row.unit }}</p>
+                    <p><strong>Item:</strong> {{ row.item }}</p>
+                    <p><strong>Observations:</strong> {{ row.observations }}</p>
+                    <p><strong>Recommendations:</strong> {{ row.recommendations }}</p>
+                    <p><strong>Action Required:</strong> {{ 'Yes' if row.action_required else 'No' }}</p>
+                    <p><strong>Probability:</strong> {{ row.probability }}</p>
+                    <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
+                    <p><strong>Consequence:</strong> {{ row.consequence }}</p>
+                    <p><strong>Risk Rating:</strong> {{ row.risk_rating }}</p>
+                </div>
+
+                <figure>
+                    {% if row.image_url %}
+                    <img src="{{ row.image_url }}" alt="Inspection Image" />
+                    <figcaption>Caption: {{ row.picture_caption }}</figcaption>
+                    {% endif %}
+                </figure>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer - Fixed to the very bottom -->
+    <div class="footer">
+        <div class="contact-info">
+            <span>Email: enquiries@HVEngineers.com.au | Report by HV Engineers Pty Ltd | Date: {{inspection_header.date}}</span>
+        </div>
+        <div class="company-info">
+            <span>Pete: 0419 228 120 | Richard: 0404 280 928</span>
+        </div>
+    </div>
+</body>
+</html>

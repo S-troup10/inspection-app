@@ -7,6 +7,7 @@ from email import encoders
 
 def send_Email(pdf, excel, recipient_email, customer):
     try:
+        
         # Email configuration
         sender_email = "enquiries@HVengineers.com.au"  # Replace with your email
         sender_password = "rant xdhh onjr tehc"  # Replace with your email app password

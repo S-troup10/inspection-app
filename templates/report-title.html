@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspection Report - Title Page</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 20mm;
+        }
+        
+        /* Title Page - First Page */
+        @page:first {
+            size: A4 portrait;
+            margin: 10mm 20mm 5mm 20mm;
+        }
+        
+        /* Body Styles */
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #004d99;
+}
+
+/* Logo on the left */
+.header .logo img {
+    max-height: 80px;
+    max-width: 150px;
+}
+
+/* Contact info on the right */
+.header .company-contact-info {
+    text-align: right;
+    font-size: 12px;
+    color: #333;
+}
+
+.company-contact-info p {
+    margin: 2px 0;
+    font-size: 12px;
+    color: #777;
+}
+
+.company-contact-info .contact-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #004d99;
+}
+        
+        /* Title Page */
+        .title-page {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .title-logo img {
+            max-width: 180px;
+            margin-bottom: 10px;
+        }
+        
+        .company-contact-info {
+            font-size: 12px;
+            color: #555;
+            margin-top: 10px;
+        }
+        
+        .company-contact-info p {
+            margin: 2px 0;
+        }
+        
+        /* Divider */
+        hr.title-divider {
+            border: 0;
+            height: 2px;
+            background-color: #004d99;
+            margin: 20px auto;
+            width: 80%;
+        }
+        
+        /* Summary */
+        .title-summary {
+            margin-top: 20px;
+        }
+        
+        .main-heading {
+            font-size: 24px;
+            color: #004d99;
+            margin-bottom: 10px;
+        }
+        
+        .title-header-image img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px auto;
+            display: block;
+            border: 1px solid #ccc;
+        }
+        
+        .summary {
+            font-size: 14px;
+            text-align: justify;
+            margin: 20px;
+        }
+        
+        /* Revisions Table */
+        .revisions-table {
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .revisions-table h3 {
+            font-size: 18px;
+            color: #004d99;
+            margin-bottom: 10px;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        .table th, .table td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: left;
+        }
+        
+        .table th {
+            background-color: #004d99;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        /* Footer */
+.footer {
+    position: fixed;
+    bottom: 10mm;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+    border-top: 2px solid #004d99;
+    padding-top: 5px;
+    display: flex;
+    flex-direction: column; /* Stack elements vertically */
+    align-items: center;
+}
+
+.footer .contact-info {
+    font-weight: bold;
+    color: #004d99;
+}
+
+.footer .company-info {
+    margin-top: 5px; /* Space between contact and company details */
+}
+
+        
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div class="page">
+            <div class="title-page">
+                <div class="header">
+                    <!-- Logo on the left -->
+                    <div class="logo">
+                        <img src="{{ logo }}" alt="Company Logo">
+                    </div>
+                
+                    <!-- Contact info on the right -->
+                    <div class="company-contact-info">
+                        <p class="contact-title">HV Engineers Pty Ltd</p>
+                        <p>Email: enquiries@HVEngineers.com.au</p>
+                        
+                        <p>Address: Unit 8B, 13 Hartley Drive, Thornton NSW</p>
+                    </div>
+                </div>
+                
+
+              
+                
+                <div class="title-summary">
+                    <h1 class="main-heading">{{inspection_header.title}}</h1>
+                    <div class="title-header-image">
+                        <img src="{{ inspection_header.image_url }}" alt="Inspection Image" />
+                    </div>
+                    <div>
+                        <p class="summary">{{ inspection_header.summary }}</p>
+                    </div>
+                </div>
+
+                <div class="revisions-table">
+                    <h3>Revisions</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Detail</th>
+                                <th>Issued By</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for revision in revisions %}
+                            <tr>
+                                <td>{{ revision.date }}</td>
+                                <td>{{ revision.status }}</td>
+                                <td>{{ revision.detail }}</td>
+                                <td>{{ revision.issued_by }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="contact-info">
+                <span>Email: enquiries@HVEngineers.com.au | Report by HV Engineers Pty Ltd | Date: {{inspection_header.date}}</span>
+                
+            </div>
+            <div class="company-info">
+                <span>Pete: 0419 228 120 | Richard: 0404 280 928</span>
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>
