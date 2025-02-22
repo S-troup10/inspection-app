@@ -51,7 +51,7 @@
         <button type="submit" class="submit-btn">Save Inspection</button>
     </form>
 </div>
-
+<script src='/static/js/db.js'></script>
 <script>
     // Fetch customers from IndexedDB and populate the dropdown
     const populateCustomerDropdown = () => {
@@ -142,20 +142,20 @@
             const imageFile = document.getElementById('image').files[0];
             const last_modified = getCurrentDateTime();
     
-            let imageBase64 = null;
+            let imageBlob = null;
             if (imageFile) {
                 const reader = new FileReader();
                 reader.onloadend = function() {
-                    imageBase64 = reader.result;
-                    saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified);
+                    imageBlob = reader.result;
+                    saveInspectionData(customer, title, description, summary, date, imageBlob, last_modified);
                 };
-                reader.readAsDataURL(imageFile);
+                reader.readAsArrayBuffer(imageFile);
             } else {
-                saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified);
+                saveInspectionData(customer, title, description, summary, date, imageBlob, last_modified);
             }
         });
     
-        function saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified) {
+        function saveInspectionData(customer, title, description, summary, date, imageBlob, last_modified) {
             const dbName = "HV-storage"; // Replace with your database name
             const storeName = "Inspection_Header"; // Replace with your object store name
     
@@ -172,21 +172,21 @@
                     description: description,
                     summary: summary,
                     date: date,
-                    image_url: imageBase64,
+                    image_url: null,
                     last_modified: last_modified
                 };
     
-                const addRequest = store.add(inspection);
-    
-                addRequest.onsuccess = function() {
-                    alert("Inspection added successfully!");
-                    window.location.href = "/inspections"; // Redirect after successful submission
-                };
-    
-                addRequest.onerror = function() {
-                    alert("Error adding inspection.");
-                };
+                insertDataWithImage(storeName, inspection, imageBlob)
+            .then(() => {
+                alert("Inspection added successfully!");
+                window.location.href = "/inspections"; // Redirect to customer list
+            })
+            .catch((error) => {
+                alert("Error adding customer: " + error);
+            });
             };
+    
+
     
             request.onerror = function(event) {
                 alert("Error opening database.");

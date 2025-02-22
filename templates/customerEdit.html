@@ -14,50 +14,39 @@
             <label for="site">Site</label>
             <input type="text" id="site" name="site" required>
         </div>
-        <div class="form-group">
-            <label for="picture">Upload Picture</label>
-            <input type="file" id="picture" name="picture" accept="image/*">
-            <div id="imagePreviewContainer"></div>
-        </div>
+
         <button type="submit" class="submit-btn">Save Changes</button>
-        <a href="/customer" class="cancel-btn">Cancel</a>
+        
     </form>
 </section>
 
 <script>
-    function updateCustomerData(id, name, site, logoBase64, last_modified) {
-        const dbName = "HV-storage"; // Database name
-        const storeName = "Customer"; // Object store name
+    const dbName = "HV-storage";  
+    const storeName = "Customer";  
 
-        // Open the IndexedDB database
+    function updateCustomerData(id, name, site, last_modified) {
         const request = indexedDB.open(dbName, 1);
 
         request.onsuccess = function (event) {
             const db = event.target.result;
-
-            // Open a transaction for readwrite operations
             const transaction = db.transaction(storeName, "readwrite");
             const store = transaction.objectStore(storeName);
 
-            // Get the existing customer record
             const getRequest = store.get(id);
 
             getRequest.onsuccess = function (event) {
                 const existingCustomer = event.target.result;
 
                 if (existingCustomer) {
-                    // Update the customer fields
                     existingCustomer.name = name;
                     existingCustomer.site = site;
-                    existingCustomer.image_url = logoBase64 || existingCustomer.image_url; // Preserve existing image if no new one is provided
                     existingCustomer.last_modified = last_modified;
 
-                    // Save the updated record
                     const updateRequest = store.put(existingCustomer);
 
                     updateRequest.onsuccess = function () {
                         alert("Customer updated successfully!");
-                        window.location.href = "/customer"; // Redirect to the customer list page
+                        window.location.href = "/customer"; 
                     };
 
                     updateRequest.onerror = function (event) {
@@ -86,82 +75,36 @@
         };
     }
 
-    // Retrieve the customer data from localStorage
+    function getCurrentDateTime() {
+        const now = new Date();
+        return now.toISOString().replace("T", " ").split(".")[0];  
+    }
+
     const customerData = JSON.parse(localStorage.getItem("edit_record"));
 
-    // Populate the form fields if customer data exists
     if (customerData) {
         document.getElementById("name").value = customerData.name || "";
         document.getElementById("site").value = customerData.site || "";
-
-        if (customerData.image_url) {
-            const imgPreview = document.createElement("img");
-            imgPreview.src = customerData.image_url;
-            imgPreview.alt = "Current Image";
-            imgPreview.id = "currentImage";
-            imgPreview.style.width = "100px";
-            document.getElementById("imagePreviewContainer").appendChild(imgPreview);
-        }
     } else {
         console.error("No customer data found in localStorage.");
     }
 
-    // Handle file preview when uploading a new picture
-    document.getElementById("picture").addEventListener("change", function (event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const imagePreview = document.getElementById("currentImage") || document.createElement("img");
-                imagePreview.src = e.target.result;
-                imagePreview.alt = "Uploaded Picture";
-                imagePreview.id = "currentImage";
-                imagePreview.style.width = "100px";
-                document.getElementById("imagePreviewContainer").appendChild(imagePreview);
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-
-
-    const getCurrentDateTime = () => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-    
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-    };
-    // Handle form submission to update the customer record
-    document.getElementById("editCustomerForm").addEventListener("submit", async function (event) {
-        event.preventDefault(); // Prevent form submission
+    document.getElementById("editCustomerForm").addEventListener("submit", function (event) {
+        event.preventDefault();
 
         const name = document.getElementById("name").value;
         const site = document.getElementById("site").value;
 
-        // Handle picture upload (if any)
-        let pictureData = customerData.image_url || null; // Preserve existing image
-        const pictureInput = document.getElementById("picture").files[0];
-        if (pictureInput) {
-            const reader = new FileReader();
-            pictureData = await new Promise((resolve) => {
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(pictureInput);
-            });
+        if (customerData) {
+            updateCustomerData(
+                customerData.customer_id,
+                name,
+                site,
+                getCurrentDateTime()
+            );
+        } else {
+            alert("No customer record found to update.");
         }
-
-        // Update the customer record in IndexedDB
-        updateCustomerData(
-            customerData.customer_id, // Pass the customer ID
-            name,
-            site,
-            pictureData,
-            getCurrentDateTime() // Update last_modified timestamp
-        );
     });
 </script>
 

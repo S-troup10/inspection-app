@@ -6,7 +6,7 @@
 <div class="form-container">
     <h2>Edit Inspection</h2>
 
-    <form id="inspectionForm" method="POST" enctype="multipart/form-data">
+    <form id="inspectionForm" method="POST">
         <!-- Customer Selection -->
         <div class="form-group">
             <label for="customer">Customer</label>
@@ -33,13 +33,6 @@
             <textarea id="summary" name="summary" rows="4" required></textarea>
         </div>
 
-        <!-- Image Upload -->
-        <div class="form-group">
-            <label for="image">Image</label>
-            <input type="file" id="image" name="image" accept="image/*">
-            <img id="image-preview" src="#" alt="Image Preview" style="display: none; max-width: 100px;">
-        </div>
-
         <!-- Date Input -->
         <div class="form-group">
             <label for="date">Date</label>
@@ -51,39 +44,29 @@
 </div>
 
 <script>
-    // Function to fetch customers from IndexedDB and inspection data from localStorage
+    const dbName = "HV-storage";  // IndexedDB database name
+    const customerStoreName = "Customer";  // Customer store name
+    const inspectionStoreName = "Inspection_Header"; // Inspection store name
+
+    // Function to fetch customers and inspection data
     const populateFormData = () => {
-        const customerStoreName = "Customer"; // Replace with your customer store name
-        const dbName = "HV-storage"; // Replace with your IndexedDB database name
-
-        // Fetch inspection data from localStorage
         const inspectionData = JSON.parse(localStorage.getItem('edit_record')) || {};
-        const inspectionId = inspectionData.inspection_id || null;
 
-        // Populate the form with inspection data from localStorage
+        // Populate the form fields with inspection data
         document.getElementById('title').value = inspectionData.title || '';
         document.getElementById('description').value = inspectionData.description || '';
         document.getElementById('summary').value = inspectionData.summary || '';
         document.getElementById('date').value = inspectionData.date || '';
 
-        const imagePreview = document.getElementById('image-preview');
-        if (inspectionData.image_url) {
-            imagePreview.src = inspectionData.image_url;
-            imagePreview.style.display = 'block';
-        }
-
         // Fetch customers from IndexedDB
         const request = indexedDB.open(dbName, 1);
-
         request.onsuccess = function(event) {
             const db = event.target.result;
-
-            // Fetch customers from IndexedDB
-            const customerTransaction = db.transaction(customerStoreName, 'readonly');
-            const customerStore = customerTransaction.objectStore(customerStoreName);
+            const transaction = db.transaction(customerStoreName, 'readonly');
+            const store = transaction.objectStore(customerStoreName);
             const customerDropdown = document.getElementById('customer');
-            
-            const customerCursorRequest = customerStore.openCursor();
+
+            const customerCursorRequest = store.openCursor();
             customerCursorRequest.onsuccess = function(event) {
                 const cursor = event.target.result;
                 if (cursor) {
@@ -96,10 +79,11 @@
                 }
             };
 
-            // After populating customers, set the selected customer
-            if (inspectionData.customer_id) {
-                document.getElementById('customer').value = inspectionData.customer_id;
-            }
+            customerTransaction.oncomplete = function () {
+                if (inspectionData.customer_id) {
+                    document.getElementById('customer').value = inspectionData.customer_id;
+                }
+            };
         };
 
         request.onerror = function(event) {
@@ -108,21 +92,7 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        populateFormData(); // Populate form data on page load
-
-        // Handle image preview for file upload
-        document.getElementById('image').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const preview = document.getElementById('image-preview');
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        populateFormData();
 
         // Save the updated inspection data when the form is submitted
         document.getElementById('inspectionForm').addEventListener('submit', function(event) {
@@ -133,25 +103,18 @@
             const description = document.getElementById('description').value;
             const summary = document.getElementById('summary').value;
             const date = document.getElementById('date').value;
-            const imageFile = document.getElementById('image').files[0];
             const last_modified = new Date().toISOString();
 
-            let imageBase64 = document.getElementById('image-preview').src; // Use current image if no new image is uploaded
-            if (imageFile) {
-                const reader = new FileReader();
-                reader.onloadend = function() {
-                    imageBase64 = reader.result;
-                    saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified);
-                };
-                reader.readAsDataURL(imageFile);
-            } else {
-                saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified);
-            }
+            saveInspectionData(customer, title, description, summary, date, last_modified);
         });
 
-        function saveInspectionData(customer, title, description, summary, date, imageBase64, last_modified) {
-            const inspectionData = JSON.parse(localStorage.getItem('edit_record')); // Get the inspection data from localStorage
-            const inspectionId = inspectionData.inspection_id; // Use inspection_id from the record
+        function saveInspectionData(customer, title, description, summary, date, last_modified) {
+            const inspectionData = JSON.parse(localStorage.getItem('edit_record'));
+            const inspectionId = inspectionData.inspection_id;
+
+            // Preserve existing image_url
+            const existingImageUrl = inspectionData.image_url || null;
+
             const updatedInspectionData = {
                 inspection_id: inspectionId,
                 customer_id: customer,
@@ -159,28 +122,21 @@
                 description: description,
                 summary: summary,
                 date: date,
-                image_url: imageBase64,
-                last_modified: last_modified
+                last_modified: last_modified,
+                image_url: existingImageUrl // Keep the existing image if unchanged
             };
 
-            const dbName = "HV-storage"; // Your IndexedDB database name
-            const customerStoreName = "Inspection_Header"; // Replace with your inspection store name
-
             const request = indexedDB.open(dbName, 1);
-
             request.onsuccess = function(event) {
                 const db = event.target.result;
+                const transaction = db.transaction(inspectionStoreName, "readwrite");
+                const store = transaction.objectStore(inspectionStoreName);
 
-                // Open a transaction to update the inspection
-                const transaction = db.transaction(customerStoreName, "readwrite");
-                const store = transaction.objectStore(customerStoreName);
-                
-                // Use put() to update the inspection record
                 const putRequest = store.put(updatedInspectionData);
 
                 putRequest.onsuccess = function() {
                     alert("Inspection updated successfully!");
-                    window.location.href = "/inspections"; // Redirect after successful submission
+                    window.location.href = "/inspections";
                 };
 
                 putRequest.onerror = function() {
@@ -224,7 +180,7 @@
     }
 
     input, select, textarea {
-        width: calc(100% - 16px); /* Prevent touching edges */
+        width: calc(100% - 16px);
         padding: 8px;
         border: 1px solid #ccc;
         border-radius: 4px;
@@ -233,7 +189,7 @@
     }
 
     textarea {
-        resize: vertical; /* Allow vertical resizing */
+        resize: vertical;
     }
 
     .submit-btn {
@@ -250,14 +206,6 @@
 
     .submit-btn:hover {
         background-color: #0056b3;
-    }
-
-    .preview-image {
-        display: block;
-        max-width: 100px;
-        margin-top: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
     }
 </style>
 {% endblock %}

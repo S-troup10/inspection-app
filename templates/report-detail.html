@@ -106,9 +106,9 @@
 
         img {
             max-width: 500px;
-            max-height:800px
             height: auto;
             margin-top: 10px;
+            max-height:500px
         }
 
         /* Footer - Fixed at the very bottom */
@@ -155,15 +155,15 @@
             <!-- Inspection Details -->
             <div class="inspection-details">
                 <div class="text">
-                    <h3>Inspection Details for: {{ row.item }}</h3>
+                    <h3>Inspection Details</h3>
                     <p><strong>Area:</strong> {{ row.area }}</p>
                     <p><strong>Unit:</strong> {{ row.unit }}</p>
                     <p><strong>Item:</strong> {{ row.item }}</p>
                     <p><strong>Observations:</strong> {{ row.observations }}</p>
                     <p><strong>Recommendations:</strong> {{ row.recommendations }}</p>
                     <p><strong>Action Required:</strong> {{ 'Yes' if row.action_required else 'No' }}</p>
-                    <p><strong>Probability:</strong> {{ row.probability }}</p>
                     <p><strong>Time Ranking:</strong> {{ row.time_ranking }}</p>
+                    <p><strong>Probability:</strong> {{ row.probability }}</p>
                     <p><strong>Consequence:</strong> {{ row.consequence }}</p>
                     <p><strong>Risk Rating:</strong> {{ row.risk_rating }}</p>
                 </div>
@@ -185,7 +185,7 @@
             <span>Email: enquiries@HVEngineers.com.au | Report by HV Engineers Pty Ltd | Date: {{inspection_header.date}}</span>
         </div>
         <div class="company-info">
-            <span>Pete: 0419 228 120 | Richard: 0404 280 928</span>
+            <span>Pete: 0419 228 120 | Richard: 0404 280 928 | {{num}}</span>
         </div>
     </div>
 </body>

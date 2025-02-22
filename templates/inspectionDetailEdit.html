@@ -5,7 +5,7 @@
 {% block content %}
     <div class="form-container">
         <h2>Edit Inspection Details</h2>
-        <form id="inspectionForm" method="POST" enctype="multipart/form-data" onsubmit="submitForm(event);">
+        <form id="inspectionForm" method="POST" onsubmit="submitForm(event);">
 
             <div class="form-group">
                 <label for="area">Area</label>
@@ -63,24 +63,14 @@
                 <input type="text" id="picture_caption" name="picture_caption">
             </div>
 
-            <div class="form-group">
-                <label for="picture">Upload Picture</label>
-                <input type="file" id="picture" name="picture" accept="image/*">
-            </div>
-            <div id="imagePreviewContainer"></div>  <!-- Preview container for the image -->
-
-
-
-
             <button type="submit" class="submit-btn">Update</button>
         </form>
     </div>
 
 <script>
-    const dbName = "HV-storage";  // Replace with your IndexedDB database name
-    const inspectionStoreName = "Inspection_Details";  // Replace with your IndexedDB store name
-    
-    // Function to populate form fields with data from localStorage
+    const dbName = "HV-storage";  
+    const inspectionStoreName = "Inspection_Details";  
+
     const populateForm = () => {
         const inspectionData = localStorage.getItem('edit_record');
         
@@ -88,7 +78,6 @@
             try {
                 const parsedData = JSON.parse(inspectionData);
     
-                // Fill in input fields
                 document.getElementById('area').value = parsedData.area || '';
                 document.getElementById('item').value = parsedData.item || '';
                 document.getElementById('unit').value = parsedData.unit || '';
@@ -96,36 +85,11 @@
                 document.getElementById('recommendations').value = parsedData.recommendations || '';
                 document.getElementById('picture_caption').value = parsedData.picture_caption || '';
 
-                // Action Required checkbox (set to true if "True" in the data)
-               // Action Required checkbox (set to true if action_required is true)
-                // Action Required checkbox (set to true if action_required is true)
-document.getElementById('action_required').checked = parsedData.action_required === true;
-
-
-
-
-
-
-                // Pre-fill Consequence input field
+                document.getElementById('action_required').checked = parsedData.action_required === true;
                 document.getElementById('consequence').value = parsedData.consequence || '';
-
-                document.getElementById('risk_rating').value = parsedData.consequence || '';
-
-                // Pre-fill Time Ranking input field
+                document.getElementById('risk_rating').value = parsedData.risk_rating || '';
                 document.getElementById('time_ranking').value = parsedData.time_ranking || '';
-
-                // Pre-fill Probability input field
                 document.getElementById('probability').value = parsedData.probability || '';
-
-                // Pre-fill the image preview if available
-                if (parsedData.image_url) {
-                    const imagePreview = document.createElement("img");
-                    imagePreview.src = parsedData.image_url;
-                    imagePreview.alt = "Inspection Image";
-                    imagePreview.id = "currentImage";
-                    imagePreview.style.width = "100px";
-                    document.getElementById("imagePreviewContainer").appendChild(imagePreview);
-                }
 
             } catch (error) {
                 console.error("Error parsing inspection data:", error);
@@ -133,16 +97,15 @@ document.getElementById('action_required').checked = parsedData.action_required 
         }
     };
 
-    // Handle form submission
     const submitForm = (event) => {
         event.preventDefault();
 
-        const localStorage_id = JSON.parse(localStorage.getItem('edit_record')); // Get the inspection data from localStorage
+        const localStorage_id = JSON.parse(localStorage.getItem('edit_record')); 
         const inspectionId = localStorage_id.inspection_id;
-        const detail_id = localStorage_id.detail_id
+        const detail_id = localStorage_id.detail_id;
 
-        // Get the existing image_url (if any) from the inspection data
-        const existingImageUrl = localStorage_id.image_url;
+        // Preserve existing image_url if present
+        const existingImageUrl = localStorage_id.image_url || null;
 
         const inspectionData = {
             detail_id: detail_id,
@@ -152,34 +115,19 @@ document.getElementById('action_required').checked = parsedData.action_required 
             action_required: document.getElementById('action_required').checked,
             consequence: document.getElementById('consequence').value,
             time_ranking: document.getElementById('time_ranking').value,
+            risk_rating: document.getElementById('risk_rating').value,
             probability: document.getElementById('probability').value,
-            probability: document.getElementById('risk_rating').value,
             unit: document.getElementById('unit').value,
             observations: document.getElementById('observations').value,
             recommendations: document.getElementById('recommendations').value,
             picture_caption: document.getElementById('picture_caption').value,
-       
-            last_modified: getCurrentDateTime()  // Set last modified timestamp
+            last_modified: getCurrentDateTime(),
+            image_url: existingImageUrl // Ensuring image_url is not lost
         };
 
-        // Handle the image upload
-        const pictureInput = document.getElementById('picture');
-        const pictureFile = pictureInput.files[0];
-        if (pictureFile) {
-            const reader = new FileReader();
-            reader.onloadend = function () {
-                inspectionData.image_url = reader.result;  // Save the image as base64
-                saveToIndexedDB(inspectionData);
-            };
-            reader.readAsDataURL(pictureFile);  // Convert the image to base64
-        } else {
-            // If no picture, retain the old image_url
-            inspectionData.image_url = existingImageUrl;
-            saveToIndexedDB(inspectionData);  // Save with the existing image URL
-        }
+        saveToIndexedDB(inspectionData);
     };
 
-    // Save form data to IndexedDB
     const saveToIndexedDB = (inspectionData) => {
         const request = indexedDB.open(dbName, 1);
 
@@ -188,11 +136,10 @@ document.getElementById('action_required').checked = parsedData.action_required 
             const transaction = db.transaction(inspectionStoreName, 'readwrite');
             const store = transaction.objectStore(inspectionStoreName);
             
-            // Assuming you want to update an existing inspection or add a new one
             const updateRequest = store.put(inspectionData);
             updateRequest.onsuccess = () => {
                 alert('Inspection details updated successfully!');
-                window.location.href = "/inspection-Details";  // Redirect to the inspections page
+                window.location.href = "/inspection-Details";  
             };
 
             updateRequest.onerror = (event) => {
@@ -207,39 +154,65 @@ document.getElementById('action_required').checked = parsedData.action_required 
 
     const getCurrentDateTime = () => {
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-    
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     };
 
-    // Handle file preview when uploading a new picture
-    document.getElementById("picture").addEventListener("change", function (event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const imagePreview = document.getElementById("currentImage") || document.createElement("img");
-                imagePreview.src = e.target.result;
-                imagePreview.alt = "Uploaded Picture";
-                imagePreview.id = "currentImage";
-                imagePreview.style.width = "100px";
-                imagePreview.style.width = '500px';
-                imagePreview.style.maxHeight = '500px';
-                imagePreview.style.maxWidth = '500px';
-                document.getElementById("imagePreviewContainer").appendChild(imagePreview);
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-
-    // On page load, populate the form from localStorage
     document.addEventListener('DOMContentLoaded', function () {
         populateForm();
     });
 </script>
+
+<style>
+    .form-container {
+        padding: 20px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 1000px;
+        min-width: 600px;
+        margin: auto;
+    }
+
+    h2 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    input, select, textarea {
+        width: calc(100% - 16px);
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        background-color: #fff;
+    }
+
+    .submit-btn {
+        display: inline-block;
+        background-color: #007bff;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        transition: background-color 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: #0056b3;
+    }
+</style>
 {% endblock %}

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, send_from_directory, jsonify
+from flask import Flask, render_template, request, redirect, send_from_directory, jsonify, send_file
 from PIL import Image
 import weasyprint
 import local as local
@@ -37,84 +37,6 @@ def add_security_headers(response):
     if request.path == '/static/js/service-worker.js':
         response.headers['Service-Worker-Allowed'] = '/'
     return response
-
-
-@app.route('/sync/<table_name>', methods=['GET'])
-def sync_customer(table_name):
-    return local.fetch(table_name)
-    
-
-
-
-
-
-@app.route('/sync/process', methods=['POST'])
-def sync_process():
-    try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "No data received."}), 400
-
-        # Define primary keys for each table
-        primary_keys = {
-            "Customer": "customer_id",
-            "Inspection_Header": "inspection_id",
-            "Inspection_Details": "detail_id"
-        }
-
-        for table_name, records in data.items():
-            primary_key = primary_keys.get(table_name)
-
-            for record in records:
-                
-                try:
-                    # Decode image URL if present and free memory after use
-                    if 'image_url' in record and record['image_url']:
-                        record['image_url'] = urllib.parse.unquote(record['image_url'])
-                        print_memory_usage()
-
-
-
-                        # Remove image_url from the record after it's been used
-                        
-                        gc.collect()
-
-                    # Fetch record one at a time if primary key exists
-                    existing_record = None
-                    if primary_key and primary_key in record:
-                        # Use the generator to fetch one record at a time
-                        existing_record = next(local.fetch_one_by_one(table_name, {primary_key: record[primary_key]}), None)
-                        print_memory_usage()
-                        if existing_record:
-                            local.update(table_name, record, {primary_key: record[primary_key]})
-                        else:
-                            local.insert(table_name, record)
-
-                        # Explicitly delete fetched record after use to free memory
-                        del existing_record
-                        gc.collect()
-
-                    else:
-                        local.insert(table_name, record)
-                        print_memory_usage()
-
-                    # Force garbage collection after processing each record
-                    gc.collect()
-
-                except Exception as e:
-                    print(f"Error processing record for table {table_name}: {e}")
-
-        return jsonify({"status": "success", "message": "Data synchronized successfully."}), 200
-
-    except Exception as e:
-        print(f"Error in sync_process: {e}")
-        return jsonify({"error": "An error occurred during synchronization.", "details": str(e)}), 500
-
-
-
-
-
-
 
 
 # Function to check allowed file extensions
@@ -237,10 +159,13 @@ from weasyprint import HTML
 from PyPDF2 import PdfMerger
 
 
+from threading import Thread  # For background task
+
 @app.route('/inspection-Print/<int:inspection_id>', methods=['POST'])
 def generate_report(inspection_id):
     try:
         if request.method == 'POST':
+            # Get form data
             date_issued = request.form.get('date_issued')
             version = request.form.get('version')
             issued_by = request.form.get('issued_by')
@@ -253,23 +178,16 @@ def generate_report(inspection_id):
                 "detail": other_version if other_version else version,
                 "issued_by": issued_by
             }
+
+            # Insert revisions data into the local database only if necessary
             
+            try:
+                local.insert('Revisions', revisions_data)
+                print("Data inserted successfully.")
+            except Exception as e:
+                print("Error during insert:", e)
 
-            # Insert revisions data into the local database
-            print(request.form.get('append'))
-            if request.form.get('append') == 'true':
-                    
-                try:
-                    local.insert('Revisions', revisions_data)
-                    print("Data inserted successfully.")
-                except Exception as e:
-                    print("Error during insert:", e)
-
-
-        
-    
-        
-        # Step 1: Fetch inspection data
+        # Step 1: Fetch all data in one go to minimize database calls
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
         if not inspection_header:
             return redirect('/select-Inspections')
@@ -280,25 +198,11 @@ def generate_report(inspection_id):
             return "Customer not found", 404
         customer = customer_data[0]
 
-        del customer_data
-        gc.collect()
-
-        # Step 2: Process inspection details
         inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
         inspection_details = filter_by_time(calculate_risk(inspection_details_raw))
 
-        del inspection_details_raw
-        gc.collect()
-
-        # Step 3: Prepare logo
-        with open('static/images/hv.png', 'rb') as image_file:
-            logo_base64 = base64.b64encode(image_file.read()).decode('utf-8')
-        logo = f"data:image/png;base64,{logo_base64}"
-
-        del logo_base64
-        gc.collect()
-
-        # Step 4: Prepare HTML for report sections
+        # Step 2: Prepare data for rendering and PDF generation
+        logo = 'https://zmusspsqfcmjpqnwkpmx.supabase.co/storage/v1/object/public/images//hv.png'
         report_data = {
             "customer": customer,
             "inspection_header": inspection_header,
@@ -307,61 +211,54 @@ def generate_report(inspection_id):
             "logo": logo
         }
 
-        # Prepare all the HTML pages
-        pages = []
-        pages.append(render_template('report-title.html', **report_data))
-        pages.append(render_template('report-table.html', **report_data))
-        detail_htmls = [render_template('report-detail.html', row=row, **report_data) for row in inspection_details]
-        
-        for page in detail_htmls:
-            pages.append(page)
-        
-        # Clean up the report_data and details
-        del detail_htmls, report_data
-        gc.collect()
+        total_pages = len(inspection_details) + 2
+        pages = [
+            render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}'),
+            render_template('report-table.html', **report_data, num=f'page 2 of {total_pages}')
+        ]
 
-        # Step 5: Generate PDFs from each HTML string in memory
+        # Add detailed rows as HTML
+        for i, row in enumerate(inspection_details, start=3):
+            pages.append(render_template('report-detail.html', row=row, **report_data, num=f'page {i} of {total_pages}'))
+
+        # Step 3: Generate PDF in one pass rather than multiple calls
         pdf_files = []
-
         for page_html in pages:
-            pdf_bytes = HTML(string=page_html).write_pdf()  # Generate PDF from HTML
-            pdf_files.append(BytesIO(pdf_bytes))  # Store each PDF in a BytesIO object
+            pdf_bytes = HTML(string=page_html).write_pdf(resolution=72)  # Generate PDF from HTML
+            pdf_files.append(BytesIO(pdf_bytes))  # Store in memory
 
-        # Step 6: Merge PDFs using PdfMerger
+        # Step 4: Merge PDFs using PdfMerger
         merged_pdf = PdfMerger()
-
         for pdf in pdf_files:
-            pdf.seek(0)  # Reset the buffer before appending
+            pdf.seek(0)  # Reset buffer before appending
             merged_pdf.append(pdf)
 
-        # Create a BytesIO buffer to store the final merged PDF
         final_pdf_buffer = BytesIO()
         merged_pdf.write(final_pdf_buffer)
         final_pdf_buffer.seek(0)
         merged_pdf.close()
-
         print("PDF merged successfully.")
 
-        # Step 7: Generate Excel
+        # Step 5: Generate Excel asynchronously
         excel = generate_excel(inspection_details)
 
-        del inspection_details
-        gc.collect()
-
-        # Step 8: Send email with PDF and Excel attachments
+        # Step 6: Send email asynchronously using a background task
         email = request.form.get('email')
         customer_name = customer.get('name')
-
-        
         final_pdf_bytes = final_pdf_buffer.getvalue()
-        # Send the email with the merged PDF and Excel file as attachments (both in memory)
-        Email.send_Email(final_pdf_bytes, excel, email, customer_name)
 
-        # Clean up
+        # Use threading to send email without blocking the response
+        def send_email_task():
+            Email.send_Email(final_pdf_bytes, excel, email, customer_name)
+
+        email_thread = Thread(target=send_email_task)
+        email_thread.start()
+
+        # Clean up and return response
         del excel, customer
         gc.collect()
 
-        # Return confirmation page
+        # Return confirmation page after email is sent
         return render_template('report_ready.html', email=email)
 
     except Exception as e:
@@ -374,7 +271,7 @@ def generate_report(inspection_id):
 
 
 
-
+        
 
 
 
@@ -384,30 +281,31 @@ def generate_report(inspection_id):
 def calculate_risk(data):
     """
     Calculates a risk rating for each record based on 'probability' and 'consequence'.
-    
+
     Args:
         data (list): List of dictionaries, each containing 'probability' and 'consequence' keys.
-    
+
     Returns:
         list: The original list with an added 'risk_rating' key for each record.
     """
-    # Map for converting string values to numerical scores
+    # Updated probability mapping
     probability_map = {
-        'Almost Certain': 5,
-        'Likely': 4,
-        'Possible': 3,
-        'Unlikely': 2,
-        'Very Rare': 1
+        'a - almost certain': 5,
+        'b - likely': 4,
+        'c - possible': 3,
+        'd - unlikely': 2,
+        'e - rare': 1
     }
 
+    # Updated consequence mapping
     consequence_map = {
-        'Critical': 5,
-        'Major': 4,
-        'Moderate': 3,
-        'Minor': 2,
-        'Low': 1
+        '5 - critical': 5,
+        '4 - major': 4,
+        '3 - moderate': 3,
+        '2 - minor': 2,
+        '1 - low': 1
     }
-    
+
     # Function to determine risk rating based on the combined score
     def get_risk_rating(score):
         if 8 <= score <= 10:
@@ -418,41 +316,21 @@ def calculate_risk(data):
             return 'Medium'
         else:
             return 'Low'
-    
+
     # Iterate over each record and calculate the risk rating
     for record in data:
         # Get the numerical values for probability and consequence
-        probability_score = probability_map.get(record.get('probability'), 1)
-        consequence_score = consequence_map.get(record.get('consequence'), 1)
-        
+        probability_score = probability_map.get(record.get('probability').lower(), 1)
+        consequence_score = consequence_map.get(record.get('consequence').lower(), 1)
+
         # Calculate the combined risk score
         combined_score = probability_score + consequence_score
-        print(get_risk_rating(combined_score))
+        
         # Assign the risk rating
         record['risk_rating'] = get_risk_rating(combined_score)
-        
-    
+
     return data
 
-
-
-
-def remove_last_page(pdf):
-    print_memory_usage()
-    reader = PdfReader(io.BytesIO(pdf))
-    writer = PdfWriter()
-    total_pages = len(reader.pages)
-
-    # Add all pages except the last one to the writer
-    for i in range(total_pages - 1):
-        writer.add_page(reader.pages[i])
-
-    # Write the new PDF to a bytes object
-    output_pdf = io.BytesIO()
-    writer.write(output_pdf)
-    output_pdf.seek(0)  # Move the pointer to the beginning of the bytes object
-
-    return output_pdf.getvalue()
     
 
 def generate_excel(data):
@@ -473,43 +351,8 @@ def generate_excel(data):
         col_offset = 0  # Tracks the column index for each row
         for key in headers:  # Only iterate through headers to ensure excluded columns are skipped
             value = row_data.get(key)
-            if key == 'image_url' and value and value.startswith("data:image"):
-                try:
-                    base64_str = value.split(',')[1]
-                    image_data = base64.b64decode(base64_str)
 
-                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_image:
-                        temp_image.write(image_data)
-                        temp_image_path = temp_image.name
-
-                        # Handle WebP or MPO conversion to PNG if necessary
-                        if 'webp' in value or 'mpo' in value:
-                            with Image.open(temp_image_path) as img:
-                                temp_png = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-                                img = img.convert("RGBA")
-                                
-                                # Rotate for MPO images
-                                if 'mpo' in value:
-                                    img = img.rotate(180, expand=True)
-                                
-                                img.save(temp_png.name, format="PNG")
-                                temp_image_path = temp_png.name
-
-
-                    # Embed the image in the 'image_url' column
-                    img = ExcelImage(temp_image_path)
-                    img.height = 150  # Adjust the height for better visibility
-                    img.width = 175   # Adjust the width for better visibility
-                    img_cell = get_column_letter(col_offset + 1) + str(row_num)
-                    ws.add_image(img, img_cell)
-
-                    # Adjust the row height to fit the image
-                    ws.row_dimensions[row_num].height = 100
-                except Exception as e:
-                    pass
-            else:
-                # Write other data columns
-                ws.cell(row=row_num, column=col_offset + 1, value=value)
+            ws.cell(row=row_num, column=col_offset + 1, value=value)
             col_offset += 1
 
     # Adjust column widths for better readability

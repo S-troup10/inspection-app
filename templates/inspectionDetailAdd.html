@@ -40,7 +40,7 @@
         <div class="form-group">
             <label>Consequence:</label>
             <div class="segmented-control">
-                {% for level, value in [('Low', 1), ('Minor', 2), ('Moderate', 3), ('Major', 4), ('Critical', 5)] %}
+                {% for level, value in [('Low', '1 - Low'), ('Minor', '2 - Minor'), ('Moderate', '3 - Moderate'), ('Major', '4 - Major'), ('Critical', '5 - Critical')] %}
                 <label>
                     <input type="radio" name="consequence" value="{{ level }}" data-label="{{ level }}" required>
                     <span>{{ level }}</span>
@@ -71,9 +71,9 @@
         <div class="form-group">
             <label>Probability:</label>
             <div class="segmented-control">
-                {% for probability, value in [('Almost Certain', 1), ('Likely', 2), ('Possible', 3), ('Unlikely', 4), ('Very Rare', 5)] %}
+                {% for probability, value in [('Almost Certain', 'A - Almost Certain'), ('Likely', 'B - Likely'), ('Possible', 'C - Possible'), ('Unlikely', 'D - Unlikely'), ('Very Rare', 'E - Rare')] %}
                 <label>
-                    <input type="radio" name="probability" value="{{ probability }}" data-label="{{ probability }}" required>
+                    <input type="radio" name="probability" value="{{ value }}" data-label="{{ probability }}" required>
                     <span>{{ probability }}</span>
                 </label>
                 {% endfor %}
@@ -85,15 +85,18 @@
 
         
 
-        <div class="form-group">
-            <label for="observations">Observations:</label>
-            <textarea id="observations" name="observations" rows="3" placeholder="Enter your observations..."></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="recommendations">Recommendations:</label>
-            <textarea id="recommendations" name="recommendations" rows="3" placeholder="Enter your recommendations..."></textarea>
-          </div>
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+            <div style="width: 100%;">
+                <label for="observations">Observations:</label>
+                <textarea id="observations" name="observations" rows="3" placeholder="Enter your observations..." style="width: 100%;"></textarea>
+            </div>
+            <div style="width: 100%;">
+                <label for="recommendations">Recommendations:</label>
+                <textarea id="recommendations" name="recommendations" rows="3" placeholder="Enter your recommendations..." style="width: 100%;"></textarea>
+            </div>
+        </div>
+        
+        
           
 
         <div class="form-group">
@@ -114,7 +117,7 @@
         <button type="submit" class="submit-btn">Submit</button>
     </form>
 </div>
-
+<script src='/static/js/db.js'></script>
 <script>
 // Event listener for the "Other" radio button to toggle the visibility of its custom input field
 // Function to handle showing or hiding the "Other" input fields
@@ -209,109 +212,88 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
 
     document.getElementById('inspectionForm').addEventListener('submit', function(event) {
         event.preventDefault();
-
+    
         // Fetch form values
         const area = document.getElementById('area').value;
         const item = document.getElementById('item').value;
         const unit = document.getElementById('unit').value;
         const action_required = document.getElementById('action_required').checked ? 'Yes' : 'No';
-
+    
         const probability = document.querySelector('input[name="probability"]:checked')?.dataset.label;
         const consequence = document.querySelector('input[name="consequence"]:checked')?.dataset.label;
         const time_ranking = document.querySelector('input[name="time_ranking"]:checked')?.dataset.label;
-       
-
-        // Get custom values if "Other" is selected
-        
         const customTimeRanking = document.getElementById('time-ranking-other-input').value;
-        
+    
         const observations = document.getElementById('observations').value;
         const recommendations = document.getElementById('recommendations').value;
         const picture_caption = document.getElementById('picture_caption').value;
-
+    
         const last_modified = new Date().toISOString();
-
         const pictureFile = document.getElementById('picture').files[0];
-        let image_url = null;
-
-        // Handle image upload
+    
+        // Prepare inspection data
+        const inspectionData = {
+            inspection_id: inspectionId, // Unique ID
+            area,
+            item,
+            action_required,
+            probability,
+            consequence,
+            time_ranking: customTimeRanking || time_ranking,
+            unit,
+            observations,
+            recommendations,
+            picture_caption,
+            image_url: null, // Will be updated when the image is stored
+            last_modified
+        };
+    
         if (pictureFile) {
             const reader = new FileReader();
             reader.onloadend = function() {
-                image_url = reader.result;
-                saveInspectionData({
-                    inspection_id: inspectionId,
-                    area,
-                    item,
-                    action_required,
-                    probability:  probability,
-                    consequence:  consequence,
-                    time_ranking: customTimeRanking || time_ranking,
-                    
-                    unit,
-                    observations,
-                    recommendations,
-                    picture_caption,
-                    
-                    image_url,
-                    last_modified
-                });
+                const imageBlob = new Blob([reader.result], { type: pictureFile.type });
+                insertDataWithImage("Inspection_Details", inspectionData, imageBlob)
+                    .then(() => {
+                        alert("Inspection details added successfully!");
+                        window.location.href = "/inspection-Details";
+                    })
+                    .catch(error => {
+                        alert("Error adding inspection details: " + error);
+                    });
             };
-            reader.readAsDataURL(pictureFile);
+            reader.readAsArrayBuffer(pictureFile); // Read as a blob
         } else {
-            saveInspectionData({
-                inspection_id: inspectionId,
-                area,
-                item,
-                action_required,
-                probability:  probability,
-                consequence:  consequence,
-                time_ranking: customTimeRanking || time_ranking,
-                
-                unit,
-                observations,
-                recommendations,
-                picture_caption,
-                
-                image_url,
-                last_modified
-            });
+            saveInspectionData(inspectionData);
         }
     });
-
+    
     function saveInspectionData(data) {
         const dbName = "HV-storage";
         const storeName = "Inspection_Details";
-
+    
         const request = indexedDB.open(dbName, 1);
-
-        request.onupgradeneeded = function(event) {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(storeName)) {
-                db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
-            }
-        };
-
+    
         request.onsuccess = function(event) {
             const db = event.target.result;
             const transaction = db.transaction(storeName, 'readwrite');
             const store = transaction.objectStore(storeName);
- 
+    
             const addRequest = store.add(data);
-
             addRequest.onsuccess = function() {
                 alert("Inspection details added successfully!");
                 window.location.href = "/inspection-Details";
             };
-
+    
             addRequest.onerror = function(event) {
                 alert("Error adding inspection details: " + event.target.error);
             };
         };
-
+    
         request.onerror = function(event) {
             alert("Error opening database: " + event.target.error);
         };
     }
+    
+    
 </script>
 {% endblock %}

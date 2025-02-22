@@ -48,7 +48,7 @@
         spinner.classList.remove('hidden');  // Show spinner
 
         try {
-            await sync_client_with_server();
+            await sync_server();
             alert('Sync completed successfully.');
         } catch (error) {
             console.error('Error during sync:', error);

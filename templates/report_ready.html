@@ -3,5 +3,99 @@
 {% block title %}Report Ready{% endblock %}
 
 {% block content %}
-<h1>Report sent to {{ email }}</h1>
+<div class="pcontainer">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="alert alert-success custom-alert" role="alert">
+                <h2 class="display-4 success-heading">Success!</h2>
+                <p class="lead">The inspection report has been successfully sent to <strong>{{ email }}</strong>.</p>
+            </div>
+            
+            <div class="mt-4 custom-thanks-section">
+                
+                <p>the email may take up to 3 minutes to send</p>
+                <a href="/" class="btn btn-primary custom-btn">Go Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        background-color: #f7f7f7;
+        color: #333;
+    }
+
+    .pcontainer {
+        max-width: 900px;
+        padding: 40px 20px;
+        background-color: #fff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        margin-top: 50px;
+    }
+
+    .custom-alert {
+        background-color: #e9f7ef;
+        border-left: 5px solid #4CAF50;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .success-heading {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #28a745;
+    }
+
+    .custom-thanks-section h3 {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-top: 20px;
+        color: #2c3e50;
+    }
+
+    .custom-thanks-section p {
+        font-size: 1.1rem;
+        color: #7f8c8d;
+    }
+
+    .custom-btn {
+        padding: 12px 30px;
+        font-size: 1.1rem;
+        background-color: #3498db;
+        border: none;
+        color: white;
+        border-radius: 5px;
+        text-transform: uppercase;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        transition: background-color 0.3s ease, transform 0.3s ease;
+    }
+
+    .custom-btn:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+    }
+
+    .custom-btn:active {
+        transform: translateY(1px);
+    }
+
+    .alert p {
+        font-size: 1.25rem;
+        margin-top: 10px;
+    }
+
+    .alert strong {
+        color: #2ecc71;
+    }
+
+    .alert-success .lead {
+        font-size: 1.3rem;
+        font-weight: 600;
+    }
+</style>
+
+
 {% endblock %}

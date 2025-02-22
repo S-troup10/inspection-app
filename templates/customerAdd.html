@@ -6,15 +6,7 @@
     <div class="form-container">
         <h2>Add Customer Details</h2>
         
-        {% if error_message %}
-            <div class="error-message">
-                {{ error_message }}
-            </div>
-        {% endif %}
-        
-        {% if request.args.get('status') == 'success' %}
-            <div class="success-message">Customer added successfully!</div>
-        {% endif %}
+   
         
         <form id="customerForm" method="POST" enctype="multipart/form-data">
             <div class="form-group">
@@ -38,7 +30,7 @@
             <button type="submit" class="submit-btn">Submit</button>
         </form>
     </div>
-
+    <script src='/static/js/db.js'></script>
     <script>
         document.getElementById('logo').addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -52,7 +44,7 @@
                 reader.readAsDataURL(file);
             }
         });
-        
+
         const getCurrentDateTime = () => {
             const now = new Date();
             const year = now.getFullYear();
@@ -65,7 +57,6 @@
             return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         };
 
-
         document.getElementById('customerForm').addEventListener('submit', function(event) {
             event.preventDefault(); // Prevent form from submitting the traditional way
 
@@ -74,23 +65,23 @@
             const logoFile = document.getElementById('logo').files[0];
             const last_modified = getCurrentDateTime();
 
-            // Convert image to base64 if available
-            let logoBase64 = null;
+            // Convert image to blob if available
+            let logoBlob = null;
             if (logoFile) {
                 const reader = new FileReader();
                 reader.onloadend = function() {
-                    logoBase64 = reader.result; // Only take the base64 part
-                    console.log(logoBase64)
-                    saveCustomerData(name, site, logoBase64, last_modified); // Call function to save data in IndexedDB
+                    logoBlob = reader.result; // Get the image blob
+                    console.log(logoBlob)
+                    saveCustomerData(name, site, logoBlob, last_modified); // Call function to save data in IndexedDB
                 };
-                reader.readAsDataURL(logoFile);
+                reader.readAsArrayBuffer(logoFile); // Read as ArrayBuffer (Blob format)
             } else {
-                saveCustomerData(name, site, logoBase64, last_modified); // Call function to save data without logo
+                saveCustomerData(name, site, logoBlob, last_modified); // Call function to save data without logo
             }
         });
 
         // Function to save data in IndexedDB
-        function saveCustomerData(name, site, logoBase64, last_modified) {
+        function saveCustomerData(name, site, logoBlob, last_modified) {
             const dbName = "HV-storage";  // Replace with your database name
             const storeName = "Customer";  // Replace with your object store name
 
@@ -104,20 +95,18 @@
                 const customer = {
                     name: name,
                     site: site,
-                    image_url: logoBase64,
+                    image_url: null, // Initially set to null or empty, will be updated later
                     last_modified: last_modified
                 };
 
-                const addRequest = store.add(customer);
-
-                addRequest.onsuccess = function() {
-                    alert("Customer added successfully!");
-                    window.location.href = "/customer";  // Redirect to the customer list page or success page
-                };
-
-                addRequest.onerror = function() {
-                    alert("Error adding customer.");
-                };
+                insertDataWithImage(storeName, customer, logoBlob)
+            .then(() => {
+                alert("Customer added successfully!");
+                window.location.href = "/customer"; // Redirect to customer list
+            })
+            .catch((error) => {
+                alert("Error adding customer: " + error);
+            });
             };
 
             request.onerror = function(event) {
@@ -127,6 +116,3 @@
     </script>
     
 {% endblock %}
-
-
-
