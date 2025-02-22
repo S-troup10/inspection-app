@@ -24,7 +24,7 @@ def send_Email(pdf, excel, recipient_email, customer):
         message['Subject'] = subject
 
         # Format customer name for filename
-        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_date = datetime.now()
         file_name = f"inspection_report-{customer.replace(' ', '-')}-{current_date}.pdf"
 
         # Handle PDF (upload if too large)
