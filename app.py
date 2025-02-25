@@ -198,8 +198,10 @@ def generate_report(inspection_id):
             return "Customer not found", 404
         customer = customer_data[0]
 
+        
+        risk_type = customer.get('risk_type')
         inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-        inspection_details = filter_by_time(calculate_risk(inspection_details_raw))
+        inspection_details = filter_by_time(calculate_risk(inspection_details_raw, risk_type))
 
         # Step 2: Prepare data for rendering and PDF generation
         logo = 'https://zmusspsqfcmjpqnwkpmx.supabase.co/storage/v1/object/public/images//hv.png'
@@ -278,7 +280,7 @@ def generate_report(inspection_id):
 
 
 
-def calculate_risk(data):
+def calculate_risk(data, risk_type):
     """
     Calculates a risk rating for each record based on 'probability' and 'consequence'.
 
@@ -307,7 +309,7 @@ def calculate_risk(data):
     }
 
     # Function to determine risk rating based on the combined score
-    def get_risk_rating(score):
+    def hv(score):
         if 8 <= score <= 10:
             return 'Extreme'
         elif 6 <= score <= 7:
@@ -316,7 +318,33 @@ def calculate_risk(data):
             return 'Medium'
         else:
             return 'Low'
+            
+            
+            
+            
+            
 
+    def nonStrutural(score):
+        if score < 7:
+            return 'Low Risk'
+        if score < 17:
+            return 'Medium Risk'
+        else:
+            return 'High Risk'
+        
+            
+    
+    def structural(score):
+        if score < 4:
+            return 'normal'
+        elif score < 11:
+            return 'Moderate'
+        elif score < 20:
+            return 'Abnormal'
+        else:
+            return 'Critical'
+        
+        
     # Iterate over each record and calculate the risk rating
     for record in data:
         # Get the numerical values for probability and consequence
@@ -324,10 +352,24 @@ def calculate_risk(data):
         consequence_score = consequence_map.get(record.get('consequence').lower(), 1)
 
         # Calculate the combined risk score
-        combined_score = probability_score + consequence_score
+        
         
         # Assign the risk rating
-        record['risk_rating'] = get_risk_rating(combined_score)
+        match int(risk_type):
+            case 1:
+                combined_score = probability_score + consequence_score
+                record['risk_rating'] = hv(combined_score)
+            case 2:
+                combined_score = probability_score * consequence_score
+                record['risk_rating'] = nonStrutural(combined_score)
+            case 3:
+                combined_score = probability_score * consequence_score
+                record['risk_rating'] = structural(combined_score)
+            
+        
+                
+        
+        
 
     return data
 

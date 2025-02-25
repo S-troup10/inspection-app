@@ -14,6 +14,15 @@
             <label for="site">Site</label>
             <input type="text" id="site" name="site" required>
         </div>
+        <div class="form-group">
+            <label for="risk_type">Risk Type:</label>
+            <select id="risk_type" name="risk_type" required>
+                <option value="" disabled selected>Select a risk type</option>
+                <option value="1">HV Engineers Standard</option>
+                <option value="2">Glencore Strutural</option>
+                <option value="3">Glencore Non Strutural</option>
+            </select>
+        </div>
 
         <button type="submit" class="submit-btn">Save Changes</button>
         
@@ -24,7 +33,7 @@
     const dbName = "HV-storage";  
     const storeName = "Customer";  
 
-    function updateCustomerData(id, name, site, last_modified) {
+    function updateCustomerData(id, name, site, last_modified, risk_type) {
         const request = indexedDB.open(dbName, 1);
 
         request.onsuccess = function (event) {
@@ -40,6 +49,7 @@
                 if (existingCustomer) {
                     existingCustomer.name = name;
                     existingCustomer.site = site;
+                    existingCustomer.risk_type = risk_type;
                     existingCustomer.last_modified = last_modified;
 
                     const updateRequest = store.put(existingCustomer);
@@ -85,6 +95,7 @@
     if (customerData) {
         document.getElementById("name").value = customerData.name || "";
         document.getElementById("site").value = customerData.site || "";
+        document.getElementById("risk_type").value = customerData.risk_type || "";
     } else {
         console.error("No customer data found in localStorage.");
     }
@@ -94,13 +105,15 @@
 
         const name = document.getElementById("name").value;
         const site = document.getElementById("site").value;
+        const risk_type = document.getElementById("risk_type").value;
 
         if (customerData) {
             updateCustomerData(
                 customerData.customer_id,
                 name,
                 site,
-                getCurrentDateTime()
+                getCurrentDateTime(),
+                risk_type
             );
         } else {
             alert("No customer record found to update.");

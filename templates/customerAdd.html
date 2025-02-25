@@ -6,8 +6,6 @@
     <div class="form-container">
         <h2>Add Customer Details</h2>
         
-   
-        
         <form id="customerForm" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="name">Customer Name:</label>
@@ -19,6 +17,16 @@
                 <input type="text" id="site" name="site" required>
             </div>
 
+            <div class="form-group">
+                <label for="risk_type">Risk Type:</label>
+                <select id="risk_type" name="risk_type" required>
+                    <option value="" disabled selected>Select a risk type</option>
+                    <option value="1">HV Engineers Standard</option>
+                    <option value="2">Glencore Strutural</option>
+                    <option value="3">Glencore Non Strutural</option>
+                </select>
+            </div>
+            
             <div class="form-group">
                 <label for="logo">Customer Logo:</label>
                 <div id="logo-upload-wrapper">
@@ -53,7 +61,7 @@
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
-        
+
             return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         };
 
@@ -63,6 +71,7 @@
             const name = document.getElementById('name').value;
             const site = document.getElementById('site').value;
             const logoFile = document.getElementById('logo').files[0];
+            const risk_type = document.getElementById('risk_type').value;
             const last_modified = getCurrentDateTime();
 
             // Convert image to blob if available
@@ -72,16 +81,16 @@
                 reader.onloadend = function() {
                     logoBlob = reader.result; // Get the image blob
                     console.log(logoBlob)
-                    saveCustomerData(name, site, logoBlob, last_modified); // Call function to save data in IndexedDB
+                    saveCustomerData(name, site, logoBlob, last_modified, risk_type); // Call function to save data in IndexedDB
                 };
                 reader.readAsArrayBuffer(logoFile); // Read as ArrayBuffer (Blob format)
             } else {
-                saveCustomerData(name, site, logoBlob, last_modified); // Call function to save data without logo
+                saveCustomerData(name, site, logoBlob, last_modified, risk_type); // Call function to save data without logo
             }
         });
 
         // Function to save data in IndexedDB
-        function saveCustomerData(name, site, logoBlob, last_modified) {
+        function saveCustomerData(name, site, logoBlob, last_modified, risk_type) {
             const dbName = "HV-storage";  // Replace with your database name
             const storeName = "Customer";  // Replace with your object store name
 
@@ -95,6 +104,7 @@
                 const customer = {
                     name: name,
                     site: site,
+                    risk_type: risk_type,
                     image_url: null, // Initially set to null or empty, will be updated later
                     last_modified: last_modified
                 };
