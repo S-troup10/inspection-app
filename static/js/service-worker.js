@@ -4,7 +4,11 @@ const EXCLUDED_ROUTES = [
     '/select-Inspections',
     '/sync/Inspection_Details',
     '/sync/Customer',
-    '/sync/Inspection_Header'
+    '/sync/Inspection_Header',
+    '/rest/v1/Inspection_Details?select=*',
+    '/rest/v1/Customer?select=*',
+    '/rest/v1/Inspection_Header?select=*'
+
 ];
 
 const ITEMS_TO_CACHE = [
