@@ -170,7 +170,9 @@
 .footer .company-info {
     margin-top: 5px; /* Space between contact and company details */
 }
-
+.img1 {
+    max-height: 1000px;
+}
         
     </style>
 </head>
@@ -199,7 +201,7 @@
                 <div class="title-summary">
                     <h1 class="main-heading">{{inspection_header.title}}</h1>
                     <div class="title-header-image">
-                        <img src="{{ inspection_header.image_url }}" alt="Inspection Image" />
+                        <img src="{{ inspection_header.image_url }}" alt="Inspection Image" class='img1' />
                     </div>
                     <div>
                         <p class="summary">{{ inspection_header.summary }}</p>

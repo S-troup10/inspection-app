@@ -40,7 +40,7 @@
         <div class="form-group">
             <label>Consequence:</label>
             <div class="segmented-control">
-                {% for level, value in [('Low', '1 - Low'), ('Minor', '2 - Minor'), ('Moderate', '3 - Moderate'), ('Major', '4 - Major'), ('Critical', '5 - Critical')] %}
+                {% for level in ['1 - Low', '2 - Minor', '3 - Moderate', '4 - Major', '5 - Critical'] %}
                 <label>
                     <input type="radio" name="consequence" value="{{ level }}" data-label="{{ level }}" required>
                     <span>{{ level }}</span>
@@ -71,9 +71,9 @@
         <div class="form-group">
             <label>Probability:</label>
             <div class="segmented-control">
-                {% for probability, value in [('Almost Certain', 'A - Almost Certain'), ('Likely', 'B - Likely'), ('Possible', 'C - Possible'), ('Unlikely', 'D - Unlikely'), ('Very Rare', 'E - Rare')] %}
+                {% for probability in ['A - Almost Certain', 'B - Likely', 'C - Possible', 'D - Unlikely', 'E - Rare'] %}
                 <label>
-                    <input type="radio" name="probability" value="{{ value }}" data-label="{{ probability }}" required>
+                    <input type="radio" name="probability" value="{{ probability }}" data-label="{{ probability }}" required>
                     <span>{{ probability }}</span>
                 </label>
                 {% endfor %}

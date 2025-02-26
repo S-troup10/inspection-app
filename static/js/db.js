@@ -172,24 +172,33 @@ const sync_client_with_server = async () => {
   
             // Find corresponding image in the Images store by image_id
             const imageRecord = imageData.find(img => img.image_id === row.image_url);
+            console.log(imageRecord);
   
             if (imageRecord) {
               try {
                 // Upload the image blob to Supabase Storage
                 const imageUrl = await uploadImageToSupabase(imageRecord.blob, imageRecord.image_id);
-  
+                
                 if (imageUrl) {
                   // Log that the image was successfully saved and the file name
                   console.log(`Photo saved successfully: ${imageRecord.image_id}. URL: ${imageUrl}`);
   
                   // Update the image_url in the data row with the Supabase URL
                   row.image_url = imageUrl;
+                  
+                  const parts = imageUrl.split('/');
+                  const new_image_id = parts[parts.length - 1];
+
+                  
+                  
+                  
+
   
                   // Remove the blob from the image record
-                  delete imageRecord.blob;
+                  //delete imageRecord.blob;
   
                   // Push a promise to update the image record in IndexedDB
-                  imageUploadPromises.push(updateImageRecord(imageRecord));
+                  imageUploadPromises.push(updateImageRecord(imageRecord, new_image_id, imageUrl));
                 }
               } catch (error) {
                 console.error(`Failed to upload image (ID: ${imageRecord.image_id}):`, error);
@@ -213,16 +222,30 @@ const sync_client_with_server = async () => {
   };
   
   // Helper: Update an image record in the "Images" store in IndexedDB.
-  const updateImageRecord = (imageRecord) => {
+  const updateImageRecord = (imageRecord, image_id, image_url) => {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction('Images', 'readwrite');
       const store = transaction.objectStore('Images');
+      imageRecord.image_id = image_id
+      imageRecord.image_url = image_url
       const request = store.put(imageRecord);
   
       request.onsuccess = () => resolve();
       request.onerror = (event) => reject(`Error updating image record: ${event.target.error}`);
     });
   };
+
+  const updateRowInIndexedDB = (table, row) => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(table, 'readwrite');
+      const store = transaction.objectStore(table);
+      const request = store.put(row);
+  
+      request.onsuccess = () => resolve();
+      request.onerror = (event) => reject(`Error updating row in ${table}: ${event.target.error}`);
+    });
+  };
+  
   
   // Helper: Sync data to Supabase using an upsert
   const syncDataToServer = async (table, data) => {
