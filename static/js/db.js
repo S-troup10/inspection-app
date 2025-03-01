@@ -344,4 +344,77 @@ const sync_server = async () => {
 
 
 
+const deleteRecord = async (storeName, key) => {
+  if (!db) {
+      console.error('Database is not open.');
+      return Promise.reject('Database is not open.');
+  }
+
+  try {
+      const primaryKeyField = getPrimaryKeyField(storeName);
+
+      // Check if record exists in Supabase
+      const { data, error: fetchError } = await _supabase
+          .from(storeName)
+          .select(primaryKeyField)
+          .eq(primaryKeyField, key)
+          .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {  // Ignore "no rows found" error
+          console.error(`Error checking for record in Supabase (${storeName}):`, fetchError);
+          throw new Error(`Failed to check for record in Supabase: ${fetchError.message}`);
+      }
+
+      if (data) {
+          // Record exists in Supabase, so delete it there first
+          const { error: deleteError } = await _supabase
+              .from(storeName)
+              .delete()
+              .eq(primaryKeyField, key);
+
+          if (deleteError) {
+              console.error(`Error deleting record from Supabase (${storeName}):`, deleteError);
+              throw new Error(`Failed to delete record from Supabase: ${deleteError.message}`);
+          }
+
+          console.log(`Record with key ${key} deleted from Supabase (${storeName})`);
+      } else {
+          console.log(`No record found in Supabase for key ${key} (${storeName}). Skipping Supabase delete.`);
+      }
+
+      // Always delete from IndexedDB
+      await deleteRecordFromIndexedDB(storeName, key);
+      console.log(`Record with key ${key} deleted from IndexedDB (${storeName})`);
+
+  } catch (error) {
+      console.error(`Failed to delete record ${key} from ${storeName}:`, error);
+      throw error;  // In case you want to handle this upstream (like showing an error message)
+  }
+};
+
+const getPrimaryKeyField = (storeName) => {
+  const primaryKeys = {
+      'Customer': 'customer_id',
+      'Inspection_Header': 'inspection_id',
+      'Inspection_Details': 'detail_id'
+  };
+  return primaryKeys[storeName] || 'id';  // Fallback in case of unknown store
+};
+
+const deleteRecordFromIndexedDB = (storeName, key) => {
+  return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.delete(key);
+
+      request.onsuccess = () => resolve();
+      request.onerror = (event) => reject(`Error deleting from IndexedDB: ${event.target.error}`);
+  });
+};
+
+
+
+
+
+
 openDB();

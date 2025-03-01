@@ -61,7 +61,9 @@ self.addEventListener("activate", (event) => {
 
 // Fetch Event
 self.addEventListener("fetch", (event) => {
-    const shouldExclude = EXCLUDED_ROUTES.some(route => event.request.url.includes(route));
+    const url = new URL(event.request.url);
+    const shouldExclude = url.pathname.startsWith('/rest') || EXCLUDED_ROUTES.some(route => event.request.url.includes(route));
+
 
     if (event.request.method === "POST" || shouldExclude) {
         event.respondWith(fetch(event.request));

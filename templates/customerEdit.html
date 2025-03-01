@@ -5,6 +5,7 @@
 {% block content %}
 <section class="form-container">
     <h2>Edit Customer</h2>
+    <button type="button" class="delete-btn" onclick="confirmDelete()">Delete</button>
     <form id="editCustomerForm">
         <div class="form-group">
             <label for="name">Name</label>
@@ -28,7 +29,7 @@
         
     </form>
 </section>
-
+<script src='/static/js/db.js'></script>
 <script>
     const dbName = "HV-storage";  
     const storeName = "Customer";  
@@ -119,6 +120,29 @@
             alert("No customer record found to update.");
         }
     });
+
+
+
+    const confirmDelete = () => {
+        const confirmation = prompt("Deleting this customer will also permanently delete all associated inspections and all their data. Type 'confirm' to permanently delete this record:");
+
+        if (confirmation === 'confirm') {
+            const localStorage_id = JSON.parse(localStorage.getItem('edit_record')); 
+            const customer_id = localStorage_id.customer_id;
+
+            deleteRecord('Customer', customer_id)
+                .then(() => {
+                    alert('Record deleted successfully!');
+                    window.location.href = "/customer";  // Redirect after delete
+                })
+                .catch((err) => {
+                    console.error('Error deleting record:', err);
+                    alert('Failed to delete record. Check console for details.');
+                });
+        } else {
+            alert('Invalid Confirmation.');
+        }
+    };
 </script>
 
 <style>
@@ -180,6 +204,21 @@
         margin-top: 10px;
         cursor: pointer;
         width: 100px;
+    }
+    .delete-btn {
+        background-color: #dc3545;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 15px;
+    }
+
+    .delete-btn:hover {
+        background-color: #c82333;
     }
 </style>
 {% endblock %}

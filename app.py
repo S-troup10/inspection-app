@@ -382,7 +382,7 @@ def generate_excel(data):
     ws.title = "Inspection Details"
 
     # Include headers, excluding 'display_on_report' and 'inspection_id'
-    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified')] if data else []
+    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified', 'detail_id', 'action_required', )] if data else []
 
     # Write header row
     for col_num, header in enumerate(headers, 1):
