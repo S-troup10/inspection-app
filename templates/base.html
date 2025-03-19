@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HV Engineers | {{ title or "Inspections" }}{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+   
     
     <link rel="manifest" href="/static/manifest.json">
     <!-- Stylesheet -->
@@ -34,7 +37,7 @@
             <a href="{{ url_for('home') }}" class="back-icon text-decoration-none" title="Back to Home">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
-            <h1>HV Engineers</h1>
+            <h1 class="d-none d-sm-block">HV Engineers</h1>
         </div>
     </header>
 

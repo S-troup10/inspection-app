@@ -4,8 +4,6 @@
 
 {% block content %}
 
-</script>
-
 <section class="inspection-section">
     <h2 class="section-title">Select Inspection</h2>
 
@@ -42,44 +40,58 @@
 </section>
 
 <!-- Modal -->
-<div id="inspection-modal" class="modal" aria-hidden="true">
-    <div class="modal-content">
-        <h3>Generate Inspection Report</h3>
+<div id="inspection-modal" class="modal fixed inset-0 flex items-center justify-center bg-black bg-opacity-50" aria-hidden="true">
+    <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-96">
+        <h3 class="text-lg font-semibold mb-4">Generate Inspection Report</h3>
         <form id="inspection-form" method="POST" action="/inspection-Print/">
             <input type="hidden" id="inspection-id" name="inspection_id">
-            <div class="form-group">
-                <label for="date-issued">Date Issued:</label>
-                <input type="date" id="date-issued" name="date_issued" required>
+            
+            <div class="form-group mb-4">
+                <label for="date-issued" class="block font-medium">Date Issued:</label>
+                <input type="date" id="date-issued" name="date_issued" required class="w-full p-2 border rounded-md">
             </div>
-            <div class="form-group">
-                <label for="version">Version:</label>
-                <select id="version" name="version" onchange="toggleOtherInput()">
+
+            <div class="form-group mb-4">
+                <label for="version" class="block font-medium">Version:</label>
+                <select id="version" name="version" onchange="toggleOtherInput()" class="w-full p-2 border rounded-md">
                     <option value="First Issue">First Issue</option>
                     <option value="Draft">Draft</option>
                     <option value="Second Issue">Second Issue</option>
                     <option value="other">Other</option>
                 </select>
             </div>
-            <div class="form-group" id="other-version-group" style="display: none;">
-                <label for="other-version">Specify Version:</label>
-                <input type="text" id="other-version" name="other_version">
+
+            <div class="form-group mb-4 hidden" id="other-version-group">
+                <label for="other-version" class="block font-medium">Specify Version:</label>
+                <input type="text" id="other-version" name="other_version" class="w-full p-2 border rounded-md">
             </div>
-            <div class="form-group">
-                <label for="issued-by">Issued By:</label>
-                <input type="text" id="issued-by" name="issued_by" required>
+
+            <div class="form-group mb-4">
+                <label for="issued-by" class="block font-medium">Issued By:</label>
+                <input type="text" id="issued-by" name="issued_by" required class="w-full p-2 border rounded-md">
             </div>
-            <div class="form-group">
-                <label for="email">Email to send reports to:</label>
-                <input type="email" id="email" name="email" required>
+
+            <div class="form-group mb-4 flex justify-between items-center">
+                <label for="add" class="font-medium text-gray-700 whitespace-nowrap">Add to revisions?</label>
+                <input type="checkbox" id="add" name="add" class="w-5 h-5 accent-blue-600">
+            </div>
+            
+            
+            
+
+            <div class="form-group mb-4">
+                <label for="email" class="block font-medium">Email to send reports to:</label>
+                <input type="email" id="email" name="email" required class="w-full p-2 border rounded-md">
             </div>
           
-            <div class="modal-actions">
-                <button type="button" onclick="closeModal()">Cancel</button>
-                <button type="submit" id="generate-report-btn">Generate Report</button>
+            <div class="modal-actions flex justify-end space-x-2">
+                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Cancel</button>
+                <button type="submit" id="generate-report-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Generate Report</button>
             </div>
         </form>
     </div>
 </div>
+
 
 <!-- Updated Spinner for Lazy Loading -->
 <div id="loading-spinner" class="hidden">

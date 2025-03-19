@@ -180,12 +180,16 @@ def generate_report(inspection_id):
             }
 
             # Insert revisions data into the local database only if necessary
-            
-            try:
-                local.insert('Revisions', revisions_data)
-                print("Data inserted successfully.")
-            except Exception as e:
-                print("Error during insert:", e)
+            add = request.form.get('add')
+            if add:
+                try:
+                    local.insert('Revisions', revisions_data)
+                    print("Data inserted successfully.")
+                except Exception as e:
+                    print("Error during insert:", e)
+            else:
+                print('box was not ticked')
+                
 
         # Step 1: Fetch all data in one go to minimize database calls
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})

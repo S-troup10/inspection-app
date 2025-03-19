@@ -79,7 +79,7 @@ const insertDataWithImage = async (storeName, record, imageBlob) => {
 
         try {
             // Insert the customer record first
-            const dataRequest = dataStore.add(record);
+            const dataRequest = dataStore.put(record);
             dataRequest.onsuccess = (event) => {
                 const customerId = event.target.result; // Get the auto-incremented ID
                 console.log("Inserted customer with ID:", customerId);
@@ -87,7 +87,7 @@ const insertDataWithImage = async (storeName, record, imageBlob) => {
                 if (imageBlob) {
                     // Store the image with reference to customer_id
                     const imageRecord = { blob: imageBlob, customer_id: customerId };
-                    const imageRequest = imagesStore.add(imageRecord);
+                    const imageRequest = imagesStore.put(imageRecord);
 
                     imageRequest.onsuccess = (event) => {
                         const imageId = event.target.result; // Get the image ID
