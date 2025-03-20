@@ -6,21 +6,39 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.0/sql-wasm.js"></script>
 
-<section class="action-section">
-    <h2 class="section-title">Choose an Action</h2>
-    <div class="action-buttons">
-        <a href="/customer" class="btn primary-btn">Customer Details</a>
-        <a href="/inspections" class="btn secondary-btn">Inspections</a>
-        <a href="/select-Inspections" id='print' class="btn secondary-btn">Print Reports</a>
+<section class=" min-h-90 flex flex-col items-center justify-center py-8 px-4 space-y-6">
+    <h2 class="text-3xl font-semibold text-center text-gray-800 mb-8">Actions Available</h2>
+    
+    <div class="bg-[#f9f9f7] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-4xl">
+        <!-- Customer Details Button -->
+        <a href="/customer" class="flex flex-col items-center justify-center bg-blue-600 text-white p-8 rounded-lg shadow-lg hover:bg-blue-700 active:bg-blue-800 transition duration-300 text-center">
+            <i class="fas fa-user-tie text-4xl mb-4"></i> <!-- Font Awesome icon -->
+            <span class="text-lg font-medium">Customer Details</span>
+        </a>
+
+        <!-- Inspections Button -->
+        <a href="/inspections" class="flex flex-col items-center justify-center bg-green-600 text-white p-8 rounded-lg shadow-lg hover:bg-green-700 active:bg-green-800 transition duration-300 text-center">
+            <i class="fas fa-clipboard-list text-4xl mb-4"></i> <!-- Font Awesome icon -->
+            <span class="text-lg font-medium">Inspections</span>
+        </a>
+
+        <!-- Print Reports Button -->
+        <a href="/select-Inspections" id="print" class="flex flex-col items-center justify-center bg-purple-600 text-white p-8 rounded-lg shadow-lg hover:bg-purple-700 active:bg-purple-800 transition duration-300 text-center">
+            <i class="fas fa-print text-4xl mb-4"></i> <!-- Font Awesome icon -->
+            <span class="text-lg font-medium">Print Reports</span>
+        </a>
     </div>
 </section>
 
 <!-- Sync Button -->
-<button id="sync-button" title="Sync Now">🔄 Sync</button>
+<button id="sync-button" title="Sync Now" class="fixed top-3 right-10 w-11 h-11 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 transition duration-300 z-50 flex items-center justify-center">
+    <i class="fas fa-sync-alt text-l"></i> <!-- Font Awesome sync icon -->
+</button>
+
 
 <!-- Full-screen Spinner -->
-<div id="fullscreen-spinner" class="hidden">
-    <div class="spinner-ring"></div>
+<div id="fullscreen-spinner" class="hidden fixed top-0 left-0 w-full h-full bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
+    <div class="w-20 h-20 border-8 border-t-8 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
 </div>
 
 <script src="/static/js/db.js"></script>
@@ -37,6 +55,7 @@
                 console.error("Service Worker Registration Failed:", error);
             });
     }
+
     document.getElementById('print').addEventListener('click', async () => {
         const spinner = document.getElementById('fullscreen-spinner');
         spinner.classList.remove('hidden');  // Show spinner
@@ -58,31 +77,46 @@
         }
     });
 
+
+
+    function isOnline() {
+        return navigator.onLine;
+    }
     
+    function updateStatus() {
+        let online = isOnline();
+        const printElement = document.getElementById('print');
+        
+        if (!online) {
+            // Make the element dull and unclickable when offline
+            printElement.classList.add('disabled');
+        } else {
+            // Remove the dull and unclickable effect when online
+            printElement.classList.remove('disabled');
+        }
+    }
+    
+    // Initial status check
+    updateStatus();
+    
+    // Listen for online/offline events to dynamically update the status
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    
+
 </script>
 
+
+
+
 <style>
-    #sync-button {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        padding: 10px 15px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-        font-size: 16px;
-        z-index: 1000;
+    .disabled {
+        opacity: 0.35; /* Makes the element look dull */
+        pointer-events: none; /* Prevents clicks and other interactions */
     }
-
-    #sync-button:hover {
-        background-color: #0056b3;
-    }
-
-    #sync-button:active {
-        background-color: #003d80;
+    
+    .hidden {
+        display: none;
     }
 
     /* Darker Spinner Ring */
