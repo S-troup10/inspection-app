@@ -158,7 +158,7 @@ import Email
 from weasyprint import HTML
 from PyPDF2 import PdfMerger
 
-
+from collections import OrderedDict
 from threading import Thread  # For background task
 
 @app.route('/inspection-Print/<int:inspection_id>', methods=['POST'])
@@ -244,9 +244,18 @@ def generate_report(inspection_id):
         final_pdf_buffer.seek(0)
         merged_pdf.close()
         print("PDF merged successfully.")
-
+        
+        inspection_date = inspection_header.get('date')
+        
         # Step 5: Generate Excel asynchronously
-        excel = generate_excel(inspection_details)
+        data_to_pass_to_excel = []
+        for row in inspection_details:
+    # Insert 'date' first, then unpack the rest
+            new_row = OrderedDict([('date', inspection_date)])
+            new_row.update(row)
+            data_to_pass_to_excel.append(new_row)
+            
+        excel = generate_excel(data_to_pass_to_excel)
 
         # Step 6: Send email asynchronously using a background task
         email = request.form.get('email')
@@ -385,9 +394,13 @@ def generate_excel(data):
     ws = wb.active
     ws.title = "Inspection Details"
 
-    # Include headers, excluding 'display_on_report' and 'inspection_id'
-    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified', 'detail_id', 'action_required', )] if data else []
 
+
+    #append the date to data before passing in
+    # Include headers, excluding 'display_on_report' and 'inspection_id'
+    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified', 'detail_id', 'action_required', 'picture_caption')] if data else []
+
+    
     # Write header row
     for col_num, header in enumerate(headers, 1):
         ws.cell(row=1, column=col_num, value=header)
