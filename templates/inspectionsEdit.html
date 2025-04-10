@@ -51,13 +51,13 @@
     // Function to fetch customers and inspection data
     const populateFormData = () => {
         const inspectionData = JSON.parse(localStorage.getItem('edit_record')) || {};
-
+    
         // Populate the form fields with inspection data
         document.getElementById('title').value = inspectionData.title || '';
         document.getElementById('description').value = inspectionData.description || '';
         document.getElementById('summary').value = inspectionData.summary || '';
         document.getElementById('date').value = inspectionData.date || '';
-
+    
         // Fetch customers from IndexedDB
         const request = indexedDB.open(dbName, 1);
         request.onsuccess = function(event) {
@@ -65,7 +65,10 @@
             const transaction = db.transaction(customerStoreName, 'readonly');
             const store = transaction.objectStore(customerStoreName);
             const customerDropdown = document.getElementById('customer');
-
+    
+            // Clear any existing options and re-add the placeholder
+            customerDropdown.innerHTML = '<option value="" disabled>Select a customer</option>';
+    
             const customerCursorRequest = store.openCursor();
             customerCursorRequest.onsuccess = function(event) {
                 const cursor = event.target.result;
@@ -78,18 +81,19 @@
                     cursor.continue();
                 }
             };
-
-            customerTransaction.oncomplete = function () {
+    
+            transaction.oncomplete = function () {
                 if (inspectionData.customer_id) {
-                    document.getElementById('customer').value = inspectionData.customer_id;
+                    customerDropdown.value = inspectionData.customer_id;
                 }
             };
         };
-
+    
         request.onerror = function(event) {
             console.error("Error opening IndexedDB:", event);
         };
     };
+    
 
     document.addEventListener('DOMContentLoaded', () => {
         populateFormData();
@@ -111,6 +115,7 @@
         function saveInspectionData(customer, title, description, summary, date, last_modified) {
             const inspectionData = JSON.parse(localStorage.getItem('edit_record'));
             const inspectionId = inspectionData.inspection_id;
+            console.log(inspectionId);
 
             // Preserve existing image_url
             const existingImageUrl = inspectionData.image_url || null;

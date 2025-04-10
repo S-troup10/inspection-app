@@ -67,7 +67,7 @@
         spinner.classList.remove('hidden');  // Show spinner
 
         try {
-            await sync_server();
+            await full_sync();
             alert('Sync completed successfully.');
         } catch (error) {
             console.error('Error during sync:', error);
@@ -110,6 +110,7 @@
 
 
 <style>
+
     .disabled {
         opacity: 0.35; /* Makes the element look dull */
         pointer-events: none; /* Prevents clicks and other interactions */

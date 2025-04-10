@@ -130,6 +130,10 @@ const insertDataWithImage = async (storeName, record, imageBlob) => {
 };
 
 
+const full_sync = async () => {
+  await sync_client_with_server();  // 1. Push local to Supabase
+  await sync_server();              // 2. Pull latest from Supabase
+};
 
 
 
@@ -338,7 +342,7 @@ const sync_server = async () => {
     console.log('Server sync complete, images uploaded successfully.');
 
     // After everything is complete, trigger client sync
-    sync_client_with_server();  // Call sync_client_with_server when everything is done
+    // Call sync_client_with_server when everything is done
 };
 
 
