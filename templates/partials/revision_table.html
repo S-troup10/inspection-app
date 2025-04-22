@@ -1,0 +1,30 @@
+{% if revisions and revisions|length > 0 %}
+<table class="table w-full">
+    <thead>
+        <tr>
+            <th>Date Issued</th>
+            <th>Status</th>
+            <th>Issued By</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for revision in revisions %}
+        <tr>
+            <td>{{ revision.date }}</td>
+            <td>{{ revision.status }}</td>
+            <td>{{ revision.issued_by }}</td>
+            <td>
+                <button  onclick="showDeleteModal({{ revision.id }}, this)" class="px-4 py-2 bg-red-500 text-gray-100 rounded-md hover:bg-red-600">
+                  Delete
+                </button>
+              </td>
+              
+              
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No revisions for this Inspection</p>
+{% endif %}

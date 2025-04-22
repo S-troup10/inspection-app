@@ -69,7 +69,7 @@ def fetch(table_name, conditions=None, exclude_image_url=False):
         return []
 
 
-
+    
 
 
 

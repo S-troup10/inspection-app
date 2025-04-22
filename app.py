@@ -125,24 +125,50 @@ def edit_inspection():
 def select_inspections():
     # Handle GET request (render the page)
     # Fetch all inspection headers
-    inspections = local.fetch('Inspection_Header', exclude_image_url=True)
+    inspections = local.fetch('Inspection_Header')
 
     # Fetch customer details and map customer_id to customer name
-    customers = local.fetch('Customer', exclude_image_url=True)
-    customer_map = {customer['customer_id']: customer['name'] for customer in customers}
+    customers = local.fetch('Customer')
+    customer_map = {c['customer_id']: c['name'] for c in customers}
 
-    # Add customer name to each inspection
+    # Pre-fetch all details for inspections once to avoid repeated calls
+    all_details = local.fetch('Inspection_Details')
+
+    # Group details by inspection_id for quick lookup
+    from collections import defaultdict
+    details_map = defaultdict(list)
+    for detail in all_details:
+        details_map[detail['inspection_id']].append(detail)
+
+    # Process inspections efficiently
     filtered_inspections = []
     for inspection in inspections:
-        details_count = len(local.fetch('Inspection_Details', {'inspection_id': inspection.get('inspection_id')}, exclude_image_url=True))
-        if details_count > 0:
-            inspection['details_count'] = details_count
-            filtered_inspections.append(inspection)
+        inspection_id = inspection.get('inspection_id')
+        details_count = len(details_map[inspection_id])
+        
+        inspection['details_count'] = details_count
         inspection['customer_name'] = customer_map.get(inspection['customer_id'], 'Unknown')
+        
+        if details_count > 0:
+            filtered_inspections.append(inspection)
 
+
+    
+
+    
     # Pass inspections to the template
     return render_template('selectPrint.html', inspections=filtered_inspections)
 
+
+
+
+
+@app.route('/get_revisions/<int:inspection_id>')
+def get_revisions(inspection_id):
+    print(inspection_id)
+    revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
+    print(revisions)
+    return render_template('partials/revision_table.html', revisions=revisions)
 
 
 import Email
