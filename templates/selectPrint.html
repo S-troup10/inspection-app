@@ -170,8 +170,13 @@
     }
   
     async function confirmDelete() {
+        const spinner = document.getElementById('loading-spinner');
+        
+        // Show the spinner
+        spinner.classList.remove('hidden');
+        
+      
         if (revisionToDelete !== null) {
-          // Delete the revision by ID from the "Revisions" table
           const { error } = await _supabase
             .from('Revisions')
             .delete()
@@ -181,7 +186,6 @@
             console.error('Error deleting revision:', error.message);
             alert('Failed to delete revision.');
           } else {
-            // Optionally remove the row from the DOM
             if (highlightedRow) {
               highlightedRow.remove();
             }
@@ -190,10 +194,13 @@
           }
       
           closeDeleteModal();
-          
-
         }
+      
+        // Hide the spinner
+       
+        spinner.classList.add('hidden');
       }
+      
 
 
 
@@ -201,12 +208,17 @@
     const revisionsModal = document.getElementById('revisions-modal');
 
     function OpenRevisionsModal() {
+        const spinner = document.getElementById('loading-spinner');
+
+        spinner.classList.remove('hidden');
+
         const id = document.getElementById('inspection-id').value;
-        console.log(id);
+        
         fetch(`/get_revisions/${id}`)
             .then(response => response.text())
             .then(html => {
                 document.getElementById('rev-list').innerHTML = html;
+                spinner.classList.add('hidden');
                 revisionsModal.classList.add('show');
             });
     }
@@ -244,6 +256,7 @@
 
 function openModal(inspectionId, inspectionTitle) {
     // Set inspection ID in the form
+    document.body.style.overflow = 'hidden';
     document.getElementById('inspection-id').value = inspectionId;
 
     // Get the row that was clicked using event.currentTarget
@@ -273,6 +286,7 @@ function openModal(inspectionId, inspectionTitle) {
     function closeModal() {
         // Hide the modal by removing the show class
         modal.classList.remove('show');
+        document.body.style.overflow = '';
         
     }
 
@@ -438,7 +452,7 @@ function openModal(inspectionId, inspectionTitle) {
         font-size: 50px;
         color: #007bff;
         z-index: 3000;
-        display: none;
+        
         transform: translate(-50%, -50%);
     }
 

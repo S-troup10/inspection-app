@@ -424,14 +424,16 @@ def generate_excel(data):
 
     #append the date to data before passing in
     # Include headers, excluding 'display_on_report' and 'inspection_id'
-    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified', 'detail_id', 'action_required', 'picture_caption')] if data else []
-
+    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified', 'detail_id', 'action_required', 'picture_caption', 'image_url')] if data else []
+    
+    #remove imageurl then add itr to the end
+    headers.append('image_url')
     
     # Write header row
     for col_num, header in enumerate(headers, 1):
         ws.cell(row=1, column=col_num, value=header)
 
-    # Write data rows and embed images in the 'image_url' column
+    
     for row_num, row_data in enumerate(data, 2):
         col_offset = 0  # Tracks the column index for each row
         for key in headers:  # Only iterate through headers to ensure excluded columns are skipped
