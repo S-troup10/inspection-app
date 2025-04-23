@@ -104,7 +104,7 @@
         .title-header-image img {
             max-width: 100%;
             height: auto;
-            max-height: 1100px;
+            max-height: 700px;
             margin: 10px auto;
             display: block;
             border: 1px solid #ccc;
@@ -173,7 +173,7 @@
     margin-top: 5px; /* Space between contact and company details */
 }
 .img1 {
-    max-height: 1000px;
+    max-height: 700px;
 }
         
     </style>
@@ -203,7 +203,7 @@
                 <div class="title-summary">
                     <h1 class="main-heading">{{inspection_header.title}}</h1>
                     <div class="title-header-image">
-                        <img src="{{ inspection_header.image_url }}" alt="Inspection Image" class='img1' />
+                        <img src="{{  inspection_header.image_url }}" alt="Inspection Image" style="max-height: 275px;" class='img1' />
                     </div>
                     <div>
                         <p class="summary">{{ inspection_header.summary }}</p>
@@ -236,7 +236,7 @@
             </div>
         </div>
         {% if revisions | length < 4 %}
-
+        {% if inspection_header.summary|length <= 1000 %}
         <div class="footer">
             <div class="contact-info">
                 <span>Email: enquiries@HVEngineers.com.au | Report by HV Engineers Pty Ltd | Date: {{inspection_header.date}}</span>
@@ -246,6 +246,7 @@
                 <span>Pete: 0419 228 120 | Richard: 0404 280 928 | {{num}}</span>
             </div>
         </div>
+        {% endif %}
         {% endif %}
         
     </div>
