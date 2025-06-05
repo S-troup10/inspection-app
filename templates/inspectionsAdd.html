@@ -3,272 +3,122 @@
 {% block title %}Add Inspection{% endblock %}
 
 {% block content %}
-<div class="form-container">
-    <h2>Add Inspection</h2>
+    <div class="form-container">
+        <h2>Add Inspection</h2>
+        <form action="/upload-Inspection" method="POST" enctype="multipart/form-data">
+            
+            <!-- Customer Selection -->
+            <div class="form-group">
+                <label for="customer">Customer</label>
+                <select id="customer" name="customer" required>
+                    {% if customers and customers|length > 0 %}
+                        {% for customer in customers %}
+                            <option value="{{ customer.customer_id }}">{{ customer.name }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option disabled>No customers available</option>
+                    {% endif %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="title">title</label>
+                <textarea id="title" name="title" required></textarea>
+            </div>
 
-   
+            <!-- Description Input -->
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" required></textarea>
+            </div>
 
-    <form id="inspectionForm" method="POST" enctype="multipart/form-data">
-        <!-- Customer Selection -->
-        <div class="form-group">
-            <label for="customer">Customer</label>
-            <select id="customer" name="customer" required>
-                <option value="" disabled selected>Loading customers...</option>
-            </select>
-        </div>
+            <!-- Summary Input -->
+            <div class="form-group">
+                <label for="summary">Summary</label>
+                <textarea id="summary" name="summary" rows="4" required></textarea>
+            </div>
 
-        <!-- Title Input -->
-        <div class="form-group">
-            <label for="title">Title</label>
-            <input type="text" id="title" name="title" required>
-        </div>
 
-        <!-- Description Input -->
-        <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" name="description" rows="4" required></textarea>
-        </div>
+            <div class="form-group">
+                <label for="file">image</label>
+                <input type="file" id="file" name="image">
+            </div>
+            <!-- Date Input -->
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" required>
+            </div>
 
-        <!-- Summary Input -->
-        <div class="form-group">
-            <label for="summary">Summary</label>
-            <textarea id="summary" name="summary" rows="4" required></textarea>
-        </div>
+            <!-- Submit Button -->
+            <button type="submit" class="submit-btn">Submit</button>
+        </form>
+    </div>
 
-        <!-- Image Upload -->
-        <div class="form-group">
-            <label for="image">Image</label>
-            <input type="file" id="image" name="image" accept="image/*">
-            <img id="image-preview" src="#" alt="Image Preview" style="display: none; max-width: 100px;">
-        </div>
-
-        <!-- Date Input -->
-        <div class="form-group">
-            <label for="date">Date</label>
-            <input type="date" id="date" name="date" required>
-        </div>
-
-        <button type="submit" class="submit-btn">Save Inspection</button>
-    </form>
-</div>
-<script src='/static/js/db.js'></script>
-<script>
-    // Fetch customers from IndexedDB and populate the dropdown
-    const populateCustomerDropdown = () => {
-        const dbName = "HV-storage"; // Replace with your IndexedDB database name
-        const storeName = "Customer"; // Replace with your object store name
-
-        const request = indexedDB.open(dbName, 1);
-
-        request.onsuccess = function(event) {
-            const db = event.target.result;
-            const transaction = db.transaction(storeName, 'readonly');
-            const store = transaction.objectStore(storeName);
-
-            const dropdown = document.getElementById('customer');
-            dropdown.innerHTML = ''; // Clear any placeholder options
-
-            const cursorRequest = store.openCursor();
-
-            cursorRequest.onsuccess = function(event) {
-                const cursor = event.target.result;
-                if (cursor) {
-                    const customer = cursor.value;
-                    const option = document.createElement('option');
-                    option.value = customer.customer_id; // Assuming `customer_id` exists in the IndexedDB records
-                    option.textContent = customer.name;
-                    dropdown.appendChild(option);
-                    cursor.continue();
-                } else if (!dropdown.hasChildNodes()) {
-                    // If no customers found, show a default option
-                    const option = document.createElement('option');
-                    option.disabled = true;
-                    option.textContent = "No customers available";
-                    dropdown.appendChild(option);
-                }
-            };
-
-            cursorRequest.onerror = function() {
-                console.error("Error fetching customers from IndexedDB.");
-            };
-        };
-
-        request.onerror = function(event) {
-            console.error("Error opening IndexedDB:", event);
-        };
-    };
-
-    document.addEventListener('DOMContentLoaded', () => {
-        populateCustomerDropdown();
-
-        const dateInput = document.getElementById('date');
-        const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
-        dateInput.value = today;
-
-        // Preview image upload
-        document.getElementById('image').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const preview = document.getElementById('image-preview');
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
+    <script>
+        // Set the default value of the date input to today's date
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('date');
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
         });
+    </script>
 
-        const getCurrentDateTime = () => {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-    
-            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        };
-    
-        document.getElementById('inspectionForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent default form submission
-    
-            const customer = document.getElementById('customer').value;
-            const title = document.getElementById('title').value;
-            const description = document.getElementById('description').value;
-            const summary = document.getElementById('summary').value;
-            const date = document.getElementById('date').value;
-            const imageFile = document.getElementById('image').files[0];
-            const last_modified = getCurrentDateTime();
-    
-            let imageBlob = null;
-            if (imageFile) {
-                const reader = new FileReader();
-                reader.onloadend = function() {
-                    imageBlob = reader.result;
-                    saveInspectionData(customer, title, description, summary, date, imageBlob, last_modified);
-                };
-                reader.readAsArrayBuffer(imageFile);
-            } else {
-                saveInspectionData(customer, title, description, summary, date, imageBlob, last_modified);
-            }
-        });
-    
-        function saveInspectionData(customer, title, description, summary, date, imageBlob, last_modified) {
-            const dbName = "HV-storage"; // Replace with your database name
-            const storeName = "Inspection_Header"; // Replace with your object store name
-    
-            const request = indexedDB.open(dbName, 1);
-    
-            request.onsuccess = function(event) {
-                const db = event.target.result;
-                const transaction = db.transaction(storeName, 'readwrite');
-                const store = transaction.objectStore(storeName);
-    
-                const inspection = {
-                    customer_id: customer,
-                    title: title,
-                    description: description,
-                    summary: summary,
-                    date: date,
-                    image_url: null,
-                    last_modified: last_modified
-                };
-    
-                insertDataWithImage(storeName, inspection, imageBlob)
-            .then(() => {
-                alert("Inspection added successfully!");
-                window.location.href = "/inspections"; // Redirect to customer list
-            })
-            .catch((error) => {
-                alert("Error adding customer: " + error);
-            });
-            };
-    
-
-    
-            request.onerror = function(event) {
-                alert("Error opening database.");
-            };
+    <style>
+        .form-container {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 1000px;
+            min-width:600px;
+            margin: auto;
         }
-    });
-</script>
 
-<style>
-    textarea {
-        width: 100%; /* Full width to fill the parent container */
-        max-width: 100%; /* Ensures elements don't exceed the form width */
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 14px;
-        background-color: #fff;
-        box-sizing: border-box; /* Includes padding in the width */
-    }
-    
-    .form-container {
-        padding: 20px;
-        background-color: #f9f9f9;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        max-width: 1000px;
-        min-width: 600px;
-        margin: auto;
-    }
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
 
-    h2 {
-        font-size: 24px;
-        margin-bottom: 20px;
-        color: #333;
-    }
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-    .form-group {
-        margin-bottom: 20px;
-    }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
 
-    label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-        color: #333;
-    }
+        input, select, textarea {
+            width: calc(100% - 16px); /* Prevent touching edges */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: #fff;
+        }
 
-    input, select, textarea {
-        width: calc(100% - 16px); /* Prevent touching edges */
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 14px;
-        background-color: #fff;
-    }
+        textarea {
+            resize: vertical; /* Allow vertical resizing */
+        }
 
-    textarea {
-        resize: vertical; /* Allow vertical resizing */
-    }
+        .submit-btn {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
 
-    .submit-btn {
-        display: inline-block;
-        background-color: #007bff;
-        color: white;
-        padding: 10px 15px;
-        border-radius: 4px;
-        font-size: 16px;
-        cursor: pointer;
-        border: none;
-        transition: background-color 0.3s ease;
-    }
-
-    .submit-btn:hover {
-        background-color: #0056b3;
-    }
-
-    .preview-image {
-        display: block;
-        max-width: 100px;
-        margin-top: 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-</style>
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
 {% endblock %}

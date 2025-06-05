@@ -11,19 +11,47 @@
         <a href="/customer-Add" class="add-btn">Add Customer</a>
     </div>
 
-    <!-- Table container -->
-    <div id="table" class="customer-list"></div>
+    <div class="customer-list">
+        {% if customers %}
+            <table class="customer-table">
+                <thead>
+                    <tr>
+                        <th>Logo</th>
+                        <th>Name</th>
+                        <th>Site</th>
+                        <th>Edit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                        <tr>
+                            <td>
+                                {% if customer.image_url %}
+                                <img src="{{ customer.image_url }}" alt="{{ customer.name }} Logo" class="customer-logo">
+
+
+                                {% else %}
+                                    <span>No Logo</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ customer.name }}</td>
+                            <td>
+                                <a>{{ customer.site }}</a>
+                            </td>
+                            <td>
+                                <a href="/customer-Edit/{{ customer.customer_id }}" class="edit-btn">Edit</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No customers found.</p>
+        {% endif %}
+    </div>
 </section>
 
-<!-- Include the table script -->
- 
-<script src="/static/js/table.js"></script>
-<script>
-    // Wait for DOM to load and then call generateTable
-    document.addEventListener('DOMContentLoaded', () => {
-        // Call the function, specifying which columns to include
-        generateTable('HV-storage', 'Customer', 'table', ['name', 'site', 'image_url']);
-
-    });
-</script>
+<style>
+    
+</style>
 {% endblock %}
