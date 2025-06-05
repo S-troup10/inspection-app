@@ -6,51 +6,43 @@
 <section class="customer-section">
     <h2 class="section-title">Inspection Detail List</h2>
 
-    <!-- Add Customer Button -->
+    <!-- Add Inspection Detail Button -->
     <div class="add-customer-container">
-        <a href="/inspectionDetails-Add/{{inspection_id}}" class="add-btn">Add Inspection Detail</a>
+        <a href="#" id="add-inspection-detail-btn" class="add-btn">Add Inspection Detail</a>
     </div>
 
-    <div class="customer-list">
-        {% if inspections %}
-            <table class="customer-table">
-                <thead>
-                    <tr>
-                        <th>area</th>
-                        <th>item</th>
-                        <th>observations</th>
-                        <th>image</th>
-                        <th>Edit</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for inspection in inspections %}
-                        <tr>
-                            
-                            <td>{{ inspection.area }}</td>
-                            <td>
-                                <a>{{ inspection.item }}</a>
-                            </td>
-                            <td>
-                                <a>{{ inspection.observations }}</a>
-                            </td>
-                            <td>
-                                <img src="/{{ inspection.image_url }}" alt="No image" class="customer-logo">
-                            </td>
-                            <td>
-                                <a href="/inspectionDetail-Edit/{{ inspection.inspection_id }}" class="edit-btn">Edit</a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No inspections detail found.</p>
-        {% endif %}
-    </div>
+    <!-- Inspection Detail Table -->
+    <div class="customer-list" id="table"></div>
 </section>
 
-<style>
-    
-</style>
+<script src="/static/js/table.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Retrieve the inspection_id from local storage
+        const inspectionId = localStorage.getItem('current_inspection_id');
+
+        if (inspectionId) {
+            // Update the Add Inspection Detail button with the inspection_id
+            const addButton = document.getElementById('add-inspection-detail-btn');
+            addButton.href = `/inspectionDetails-Add`;
+            
+            // Generate the table
+            generateTable(
+                'HV-storage',
+                'Inspection_Details',
+                'table',
+                [
+                    'area', 'item', 'action_required',
+                    'time_ranking', 'observations',
+                    'recommendations', 'image_url'
+                ],
+                { index: 'inspection_id', value: inspectionId }
+            );
+        } else {
+            console.error('No inspection_id found in local storage.');
+            alert('Inspection ID is missing. Please navigate back and select an inspection.');
+            window.location.href = '/inspections'; // Redirect to a fallback page
+        }
+    });
+</script>
 {% endblock %}

@@ -57,6 +57,12 @@ header .subtitle {
     color: var(--accent-color);
 }
 
+header .subtitle {
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: var(--accent-color);
+}
+
 /* Back Icon Styling */
 .back-icon {
     position: absolute;
@@ -79,8 +85,10 @@ header .subtitle {
 
 .back-icon:hover {
     color: var(--text-color);
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
+
+
 
 /* Main Content */
 main {
@@ -112,24 +120,47 @@ main {
     max-width: 900px;
 }
 
+/* Button Styles */
 .btn {
     display: block;
-    padding: 20px;
-    font-size: 1.2rem;
+    padding: 18px 30px;  /* Increased padding for larger buttons */
+    font-size: 1.5rem;    /* Larger font size */
     font-weight: 600;
     text-decoration: none;
     border-radius: 8px;
     text-align: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
-    color: var(--secondary-color);
-    background: var(--primary-color);
-    box-shadow: 0 4px 8px var(--shadow-color);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+    color: powderblue;
+    background: linear-gradient(145deg, #9da3ec, #a4e0b5); /* Gradient background for modern effect */
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);  /* More prominent shadow */
 }
 
+/* Button Hover Effect */
 .btn:hover {
-    background: var(--accent-color);
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px var(--shadow-color);
+    background: linear-gradient(145deg, #b0b0b0, #7f7f7f); /* Inverted gradient for hover effect */
+    transform: translateY(-5px);  /* Slight lift on hover */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);  /* Deeper shadow on hover */
+    opacity: 0.9;  /* Slight opacity change for hover */
+}
+
+/* Button Focus Effect (for accessibility) */
+.btn:focus {
+    outline: none;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.6);  /* Focus state with blue glow */
+}
+
+/* Add Button for Action Section */
+.action-buttons .btn {
+    font-size: 1.3rem;  /* Adjust font size for action buttons */
+    padding: 20px 40px; /* Larger padding */
+    border-radius: 10px;  /* More rounded corners */
+    transition: all 0.3s ease; /* Smooth transition on hover/focus */
+}
+
+/* Add Button Hover Effect */
+.action-buttons .btn:hover {
+    transform: scale(1.05);  /* Slight scaling effect on hover */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);  /* More shadow for hover */
 }
 
 /* Form Styling */
@@ -266,6 +297,26 @@ body {
     flex-direction: column;
 }
 
+
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2.5rem; /* Scale down the title on smaller screens */
+    }
+
+    /* Adjust the back icon to be smaller and more spaced out */
+    .back-icon {
+        font-size: 2rem; /* Smaller back icon */
+        left: 15px; /* Adjust the position */
+        top: 15px; /* Adjust the position */
+    }
+
+    /* Ensure the title has space from the back button */
+    .container {
+        
+        justify-content: space-between;
+        align-items: center;
+    }
+}
 .section-title {
     font-size: 28px;
     margin-bottom: 20px;
@@ -549,6 +600,7 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     max-width: 100%;
     margin: auto;
+    
 }
 
 .section-title {

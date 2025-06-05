@@ -5,49 +5,178 @@
 {% block content %}
 <div class="form-container">
     <h2>Edit Inspection</h2>
-    <form action="/inspection-Edit/{{ inspection.inspection_id }}" method="POST">
+    <button type="button" class="delete-btn" onclick="confirmDelete()">Delete</button>
+    <form id="inspectionForm" method="POST">
         <!-- Customer Selection -->
         <div class="form-group">
             <label for="customer">Customer</label>
             <select id="customer" name="customer" required>
-                {% if customers and customers|length > 0 %}
-                    {% for customer in customers %}
-                        <option value="{{ customer.customer_id }}" {% if customer.customer_id == inspection.customer_id %}selected{% endif %}>
-                            {{ customer.name }}
-                        </option>
-                    {% endfor %}
-                {% else %}
-                    <option disabled>No customers available</option>
-                {% endif %}
+                <option value="" disabled selected>Loading customers...</option>
             </select>
         </div>
 
+        <!-- Title Input -->
         <div class="form-group">
-            <label for="title">title</label>
-            <textarea id="title" name="title" required>{{ inspection.title }}</textarea>
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" required>
         </div>
+
         <!-- Description Input -->
         <div class="form-group">
             <label for="description">Description</label>
-            <textarea id="description" name="description" rows="4" required>{{ inspection.description }}</textarea>
+            <textarea id="description" name="description" rows="4" required></textarea>
         </div>
 
         <!-- Summary Input -->
         <div class="form-group">
             <label for="summary">Summary</label>
-            <textarea id="summary" name="summary" rows="4" required>{{ inspection.summary }}</textarea>
+            <textarea id="summary" name="summary" rows="4" required></textarea>
         </div>
 
         <!-- Date Input -->
         <div class="form-group">
             <label for="date">Date</label>
-            <input type="date" id="date" name="date" value="{{ inspection.date }}" required>
+            <input type="date" id="date" name="date" required>
         </div>
 
-        <!-- Submit Button -->
         <button type="submit" class="submit-btn">Save Changes</button>
     </form>
 </div>
+<script src='/static/js/db.js'></script>
+<script>
+    const dbName = "HV-storage";  // IndexedDB database name
+    const customerStoreName = "Customer";  // Customer store name
+    const inspectionStoreName = "Inspection_Header"; // Inspection store name
+
+    // Function to fetch customers and inspection data
+    const populateFormData = () => {
+        const inspectionData = JSON.parse(localStorage.getItem('edit_record')) || {};
+    
+        // Populate the form fields with inspection data
+        document.getElementById('title').value = inspectionData.title || '';
+        document.getElementById('description').value = inspectionData.description || '';
+        document.getElementById('summary').value = inspectionData.summary || '';
+        document.getElementById('date').value = inspectionData.date || '';
+    
+        // Fetch customers from IndexedDB
+        const request = indexedDB.open(dbName, 1);
+        request.onsuccess = function(event) {
+            const db = event.target.result;
+            const transaction = db.transaction(customerStoreName, 'readonly');
+            const store = transaction.objectStore(customerStoreName);
+            const customerDropdown = document.getElementById('customer');
+    
+            // Clear any existing options and re-add the placeholder
+            customerDropdown.innerHTML = '<option value="" disabled>Select a customer</option>';
+    
+            const customerCursorRequest = store.openCursor();
+            customerCursorRequest.onsuccess = function(event) {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const customer = cursor.value;
+                    const option = document.createElement('option');
+                    option.value = customer.customer_id;
+                    option.textContent = customer.name;
+                    customerDropdown.appendChild(option);
+                    cursor.continue();
+                }
+            };
+    
+            transaction.oncomplete = function () {
+                if (inspectionData.customer_id) {
+                    customerDropdown.value = inspectionData.customer_id;
+                }
+            };
+        };
+    
+        request.onerror = function(event) {
+            console.error("Error opening IndexedDB:", event);
+        };
+    };
+    
+
+    document.addEventListener('DOMContentLoaded', () => {
+        populateFormData();
+
+        // Save the updated inspection data when the form is submitted
+        document.getElementById('inspectionForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const customer = document.getElementById('customer').value;
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const summary = document.getElementById('summary').value;
+            const date = document.getElementById('date').value;
+            const last_modified = new Date().toISOString();
+
+            saveInspectionData(customer, title, description, summary, date, last_modified);
+        });
+
+        function saveInspectionData(customer, title, description, summary, date, last_modified) {
+            const inspectionData = JSON.parse(localStorage.getItem('edit_record'));
+            const inspectionId = inspectionData.inspection_id;
+            console.log(inspectionId);
+
+            // Preserve existing image_url
+            const existingImageUrl = inspectionData.image_url || null;
+
+            const updatedInspectionData = {
+                inspection_id: inspectionId,
+                customer_id: customer,
+                title: title,
+                description: description,
+                summary: summary,
+                date: date,
+                last_modified: last_modified,
+                image_url: existingImageUrl // Keep the existing image if unchanged
+            };
+
+            const request = indexedDB.open(dbName, 1);
+            request.onsuccess = function(event) {
+                const db = event.target.result;
+                const transaction = db.transaction(inspectionStoreName, "readwrite");
+                const store = transaction.objectStore(inspectionStoreName);
+
+                const putRequest = store.put(updatedInspectionData);
+
+                putRequest.onsuccess = function() {
+                    alert("Inspection updated successfully!");
+                    window.location.href = "/inspections";
+                };
+
+                putRequest.onerror = function() {
+                    alert("Error updating inspection.");
+                };
+            };
+
+            request.onerror = function(event) {
+                console.error("Error opening IndexedDB:", event);
+            };
+        }
+    });
+
+
+    const confirmDelete = () => {
+        const confirmation = prompt("Deleting this inspection will also remove all associated inspection details and revisions. Type 'confirm' to permanently delete this record:");
+
+        if (confirmation === 'confirm') {
+            const localStorage_id = JSON.parse(localStorage.getItem('edit_record')); 
+            const inspection_id = localStorage_id.inspection_id;
+
+            deleteRecord('Inspection_Header', inspection_id)
+                .then(() => {
+                    alert('Record deleted successfully!');
+                    window.location.href = "/inspections";  // Redirect after delete
+                })
+                .catch((err) => {
+                    console.error('Error deleting record:', err);
+                    alert('Failed to delete record. Check console for details.');
+                });
+        } else {
+            alert('Invalid Confirmation.');
+        }
+    };
+</script>
 
 <style>
     .form-container {
@@ -95,7 +224,6 @@
         background-color: #007bff;
         color: white;
         padding: 10px 15px;
-        text-decoration: none;
         border-radius: 4px;
         font-size: 16px;
         cursor: pointer;
@@ -105,6 +233,21 @@
 
     .submit-btn:hover {
         background-color: #0056b3;
+    }
+    .delete-btn {
+        background-color: #dc3545;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 15px;
+    }
+
+    .delete-btn:hover {
+        background-color: #c82333;
     }
 </style>
 {% endblock %}

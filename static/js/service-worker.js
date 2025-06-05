@@ -7,7 +7,9 @@ const EXCLUDED_ROUTES = [
     '/sync/Inspection_Header',
     '/rest/v1/Inspection_Details?select=*',
     '/rest/v1/Customer?select=*',
-    '/rest/v1/Inspection_Header?select=*'
+    '/rest/v1/Inspection_Header?select=*', 
+    '/api/init'
+
 
 ];
 

@@ -1,12 +1,25 @@
-from flask import Flask, render_template, request, redirect, flash, url_for, send_file
-import io
+from flask import Flask, render_template, request, redirect, send_from_directory, jsonify, send_file
+from PIL import Image
 import weasyprint
-import local_database as local
-
-
+import local as local
+import gunicorn
+import base64
+import urllib.parse
+import openpyxl
+from openpyxl.utils import get_column_letter
+from PyPDF2 import PdfReader, PdfWriter
+from openpyxl.drawing.image import Image as ExcelImage
+import tempfile
+import gc
+import io
+import openpyxl
+from io import BytesIO
 
 # ipad password 431619
-
+def print_memory_usage():
+    process = psutil.Process()  # Get the current process
+    memory_in_mb = process.memory_info().rss / 1024 ** 2  # Resident Set Size in MB
+    print(f"Current memory usage: {memory_in_mb:.2f} MB")
 
 app = Flask(__name__)
 app.secret_key = 'ddd'
@@ -15,10 +28,41 @@ app.config['UPLOAD_FOLDER'] = './static/cache'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 3000 * 3000  # 100 MB limit
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
+PASSWORD = 'abc123'
+
+#service worker setup
+@app.after_request
+def add_security_headers(response):
+    
+    if request.path == '/static/js/service-worker.js':
+        response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
 
 # Function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+@app.route('/api/init', methods=['POST'])
+def vertify():
+    data = request.json
+    if data.get('password') == PASSWORD: 
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False})
+    
+    
+@app.route('/vertify')
+def vert():
+    return render_template('/vertify.html')
+    
+@app.route('/access')
+def access():
+    return render_template('access.html')
+
+        
+        
 
 @app.route('/')
 def home():
@@ -30,183 +74,35 @@ def add_Customer_Page():
 
 @app.route('/customer')
 def view_customers():
-    customers = local.fetch("Customer")
-    
-    return render_template('customer.html', customers=customers)
+    return render_template('customer.html')
 
-@app.route('/customer-Edit/<int:customer_id>', methods=['GET', 'POST'])
-def edit_customer(customer_id):
-   
-        # Fetch customer data by ID
-        response = local.fetch('Customer', {'customer_id': customer_id})
-        print(response)
-        customer_data = response if response else print('erroe in getting customer datat')
-    
-
-        if not customer_data:
-            return "Customer not found", 404
-
-        if request.method == 'POST':
-            # Handle form submission to update customer data
-            name = request.form.get('name')
-            site = request.form.get('site')
-
-            update_data = {'name': name, 'site': site}
-            status = local.update('Customer', update_data, {'customer_id': customer_id})
-            print(status)
-            if status:
-                flash('customer edited sucsessfully', 'sucsess')
-                return redirect('/customer')  # Redirect back to customer view page
-            else:
-                flash('customer edit failed', 'fail')
-                return redirect('/customer')  # Redirect back to customer view page
-
-        # Render the edit page with preloaded data
-        
-        return render_template('customerEdit.html', customer=customer_data)
-
-@app.route("/upload-Customer", methods=["POST"])
-def add_customer():
-    try:
-        
-        is_picture = 'logo' in request.files and request.files['logo'].filename != ''
-        logo = request.files['logo'] if is_picture else None
-        name = request.form.get('name')
-        site = request.form.get('site')
-
-        if not name or not site:
-            flash("Name and site are required fields.", "danger")
-            return redirect(url_for('add_Customer_Page'))
-
-        data = {'name': name, 'site': site}
-        
-        response = local.insert('Customer', data, logo)
-
-        if response:
-            flash("Customer added successfully!", "success")
-        else:
-            flash("Failed to add customer. Please try again later.", "danger")
-
-        return redirect(url_for('view_customers'))
-
-    except Exception as e:
-        flash(f"An error occurred: {e}", "danger")
-        return redirect(url_for('add_Customer_Page'))
+@app.route('/customer/edit', methods=['GET', 'POST'])
+def edit_customer():
+        return render_template('customerEdit.html')
 
 
 
 
 
+@app.route('/inspection-Details', methods=['GET'])
+def inspection_details():
+    return render_template('inspectionDetails.html')
 
 
-@app.route('/inspection-Details/<int:inspection_id>', methods=['GET'])
-def inspection_details(inspection_id):
-    # Fetch inspections filtered by the inspection_id
-    inspections = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-    
-    # Ensure inspections is a list even if a single item is returned
-    if inspections is None:
-        inspections = []
-    return render_template('inspectionDetails.html', inspections=inspections, inspection_id=inspection_id)
-
-@app.route('/inspectionDetails-Add/<int:inspection_id>')
-def inspection_detail_add(inspection_id):
+@app.route('/inspectionDetails-Add', methods=['GET', 'POST'])
+def inspection_detail_add():
+    # The frontend ensures inspection_id is passed correctly
+    inspection_id = request.args.get('inspection_id')
     return render_template('/inspectionDetailAdd.html', inspection_id=inspection_id)
 
-@app.route("/upload-InspectionDetail/<int:inspection_id>", methods=["POST"])
-def upload_inspection_detail(inspection_id):
-    try:
-        try:
-            pic = request.files['picture']
-        except: 
-            pic = None
-        print(f'pic : {pic}')
-        # Retrieve form data
-        inspection_data = {
-            'inspection_id': inspection_id,
-            'area': request.form.get('area'),
-            'item': request.form.get('item'),
-            'action_Required': request.form.get('action_required'),
-            'probability': request.form.get('probability'),
-            'consequence': request.form.get('consequence'),
-            'time_Ranking': request.form.get('time_ranking'),
-            'unit': request.form.get('unit'),
-            'observations': request.form.get('observations'),
-            'recommendations': request.form.get('recommendations'),
-            'picture_Caption': request.form.get('picture_caption'),
-            'display_On_Report': request.form.get('display_on_Report')
-        }
 
-        # Insert data into the database
-        
-        response = local.insert(
-            table_name='Inspection_Details',
-            data=inspection_data,
-            file=pic,
-        )
 
-        # Validate response
-        print(f"Insert data response: {response}")
-        if response:
-            flash("Inspection details uploaded successfully!", "success")
-            return redirect(f'/inspection-Details/{inspection_id}')
-        else:
-            
-            
-            flash(f"Failed to save inspection details")
-            return redirect(f'/inspection-Details/{inspection_id}')
 
-    except Exception as e:
-        print(f"Error: {e}")
-        flash(f"An error occurred: {e}", "error")
-        return redirect(f'/inspection-Details/{inspection_id}')
-
-@app.route('/inspectionDetail-Edit/<int:detail_id>', methods=['GET', 'POST'])
-def edit_inspection_detail(detail_id):
-    # Fetch inspection data by ID
-    response = local.fetch('Inspection_Details', {'detail_id': detail_id})  # Assuming response is a dict
+@app.route('/inspection-Details/edit', methods=['GET', 'POST'])
+def edit_inspection_detail():
     
-    # Check if the response contains the required data
-    if not response or 'data' not in response or not response['data']:
-        return "Inspection not found", 404
-
-    inspection_data = response['data'][0]  # Access the first record in the 'data' list
-
-    if request.method == 'POST':
-        # Handle form submission to update inspection data
-        area = request.form.get('area')
-        item = request.form.get('item')
-        action_required = request.form.get('action_required')
-        probability = request.form.get('probability')
-        consequence = request.form.get('consequence')
-        time_ranking = request.form.get('time_Ranking')
-        unit = request.form.get('unit')
-        observations = request.form.get('observations')
-        recommendations = request.form.get('recommendations')
-        picture_caption = request.form.get('picture_Caption')
-        display_on_report = request.form.get('display_On_Report')
-
-        # Prepare data for update
-        update_data = {
-            'area': area,
-            'item': item,
-            'action_Required': action_required,
-            'probability': probability,
-            'consequence': consequence,
-            'time_Ranking': time_ranking,
-            'unit': unit,
-            'observations': observations,
-            'recommendations': recommendations,
-            'picture_Caption': picture_caption,
-            'display_On_Report': display_on_report,
-        }
-
-        # Update the inspection record
-        local.fetch('Inspection_Details', update_data, {'detail_id':detail_id})
-        return redirect('/inspections')  # Redirect to the customer view page
-
     # Render the edit page with preloaded data
-    return render_template('customerEdit.html', inspection=inspection_data)
+    return render_template('inspectionDetailEdit.html')
 
 
 
@@ -222,163 +118,101 @@ def edit_inspection_detail(detail_id):
 
 @app.route('/inspections')
 def inspection_summary():
-    inspection_header = local.fetch("Inspection_Header")
+ 
 
-    for dictionary in inspection_header:
-        # Fetch customer details based on customer_id from the inspection header
-        customer = local.fetch('Customer', {'customer_id': dictionary['customer_id']})
+   
 
-        # Check if customer data exists (i.e., not an empty list)
-        if customer:
-            # Assuming customer[0] contains the dictionary for the first matching customer
-            dictionary.update({'name': customer[0]['name']})
-        else:
-            dictionary.update({'name': 'Unknown Customer'})
-
-    # Debugging to verify updates
-    print(inspection_header)
-    return render_template('inspections.html', inspections=inspection_header)
+    return render_template('inspections.html')
 
 @app.route('/inspection-Add')
 def Inspection_add():
     #pass a table of all the customers to display the name of the customers in the form
-    customers = local.fetch('Customer')
-    print(customers)
+    customers = local.fetch('Customer', exclude_image_url=True)
+    
     return render_template('/inspectionsAdd.html', customers=customers)
 
-@app.route("/upload-Inspection", methods=["POST"])
-def upload_inspection():
-    try:
-        # Retrieve form data
-        description = request.form.get('description')
-        summary = request.form.get('summary')
-        customer_id = request.form.get('customer')
-        date = request.form.get('date')
-        title = request.form.get('title')
-        is_picture = 'image' in request.files and request.files['image'].filename != ''
-        pic = request.files['image'] if is_picture else None
-        
 
-        # Prepare data for insertion
-        inspection_data = {
-            'description': description,
-            'summary': summary,
-            'customer_id': customer_id,
-            'date': date,
-            'title': title,
-            
-        }
-
-        # Insert data into the database
-        response = local.insert(
-            table_name='Inspection_Header',
-            data=inspection_data,
-            file=pic,
-            
-        )
-
-        # Handle response
-        if response:  # Check for 'success' in the response
-            flash("Inspection uploaded successfully!", "success")
-            return redirect('/inspections')
-        else:
-            
-            print(f"Database insertion failed")
-            flash(f"Failed to upload inspection")
-            return redirect('/inspections')
-
-    except Exception as e:
-        print(f"Error during inspection upload: {e}")
-        flash(f"An unexpected error occurred: {e}", "error")
-        return redirect('/inspections')
-
-@app.route('/inspection-Edit/<int:inspection_id>', methods=['GET', 'POST'])
-def edit_inspection(inspection_id):
-    # Fetch inspection data
-    response = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
-    if not response:
-        flash('Inspection not found', 'error')
-        return redirect('/inspections')
-
-    inspection_data = response
-
+@app.route('/inspections/edit', methods=['GET', 'POST'])
+def edit_inspection():
+    
     # Fetch customers for the dropdown
-    customers = local.fetch('Customer')
+    
 
-    if request.method == 'POST':
-        description = request.form.get('description')
-        summary = request.form.get('summary')
-        customer_id = request.form.get('customer')
-        date = request.form.get('date')
-        title = request.form.get('title')
-
-        update_data = {
-            'description': description,
-            'summary': summary,
-            'customer_id': customer_id,
-            'date': date,
-            'title' : title
-        }
-
-        local.update('Inspection_Header', update_data, {'inspection_id': inspection_id})
-        flash('Inspection updated successfully!', 'success')
-        return redirect('/inspections')
-
-    return render_template('inspectionsEdit.html', inspection=inspection_data, customers=customers)
+    return render_template('inspectionsEdit.html')
 
 
 
 @app.route('/select-Inspections', methods=['GET', 'POST'])
 def select_inspections():
-    customer = local.fetch('Customer')
-    inspection_headers = None
-    selected_customer_id = None
+    # Handle GET request (render the page)
+    # Fetch all inspection headers
+    inspections = local.fetch('Inspection_Header')
+
+    # Fetch customer details and map customer_id to customer name
+    customers = local.fetch('Customer')
+    customer_map = {c['customer_id']: c['name'] for c in customers}
+
+    # Pre-fetch all details for inspections once to avoid repeated calls
+    all_details = local.fetch('Inspection_Details')
+
+    # Group details by inspection_id for quick lookup
+    from collections import defaultdict
+    details_map = defaultdict(list)
+    for detail in all_details:
+        details_map[detail['inspection_id']].append(detail)
+
+    # Process inspections efficiently
+    filtered_inspections = []
+    for inspection in inspections:
+        inspection_id = inspection.get('inspection_id')
+        details_count = len(details_map[inspection_id])
+        
+        inspection['details_count'] = details_count
+        inspection['customer_name'] = customer_map.get(inspection['customer_id'], 'Unknown')
+        
+        if details_count > 0:
+            filtered_inspections.append(inspection)
+
+
     
 
-    if request.method == 'POST':
-        selected_customer_id = request.form.get('customer')
-        
-        if selected_customer_id:
-            
-            inspection_headers = local.fetch('Inspection_Header', {'customer_id': selected_customer_id})
-            for inspection in inspection_headers:
-                count = len(local.fetch('Inspection_Details', {'inspection_id':inspection.get('inspection_id')}))
-                inspection['details_count'] = count
-
-
-    return render_template(
-        '/selectPrint.html',
-        customers=customer,
-        inspection_data=inspection_headers,
-        selected_customer_id=selected_customer_id
-    )
+    
+    # Pass inspections to the template
+    return render_template('selectPrint.html', inspections=filtered_inspections)
 
 
 
 
 
-@app.route('/revisions')
-def revisions():
-    revisions = local.fetch('Revisions')
-    return render_template('revisions.html', revisions=revisions)
+@app.route('/get_revisions/<int:inspection_id>')
+def get_revisions(inspection_id):
+    print(inspection_id)
+    revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
+    print(revisions)
+    return render_template('partials/revision_table.html', revisions=revisions)
 
-@app.route('/revisions-Add')
-def add_revisions():
-    inspections = local.fetch('Inspection_Header')
-    return render_template('revisionsAdd.html', inspections=inspections)
+
+import Email
 
 
 
 
 
 
-from flask import Response
+
+
+
+from weasyprint import HTML
+from PyPDF2 import PdfMerger
+
+from collections import OrderedDict
+from threading import Thread  # For background task
+
 @app.route('/inspection-Print/<int:inspection_id>', methods=['POST'])
 def generate_report(inspection_id):
-    print("Function generate_report called with method:", request.method)
-
     try:
         if request.method == 'POST':
+            # Get form data
             date_issued = request.form.get('date_issued')
             version = request.form.get('version')
             issued_by = request.form.get('issued_by')
@@ -391,87 +225,293 @@ def generate_report(inspection_id):
                 "detail": other_version if other_version else version,
                 "issued_by": issued_by
             }
-            print('Revisions Data:', revisions_data)
 
-            # Insert revisions data into the local database
-            try:
-                local.insert('Revisions', revisions_data)
-                print("Data inserted successfully.")
-            except Exception as e:
-                print("Error during insert:", e)
+            # Insert revisions data into the local database only if necessary
+            add = request.form.get('add')
+            if add:
+                try:
+                    local.insert('Revisions', revisions_data)
+                    print("Data inserted successfully.")
+                except Exception as e:
+                    print("Error during insert:", e)
+            else:
+                print('box was not ticked')
+                
 
-            # Fetch revisions after inserting new revision
-            revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-            print('Fetched Revisions:', revisions)
-
-
-        # Fetch revisions regardless of POST
-        revisions = local.fetch('Revisions', {'inspection_id': inspection_id})
-        print('revisions:', revisions)
-
-        # Fetch inspection header
+        # Step 1: Fetch all data in one go to minimize database calls
         inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
         if not inspection_header:
-            flash(f"Inspection header not found for ID: {inspection_id}")
             return redirect('/select-Inspections')
         inspection_header = inspection_header[0]
 
-        # Fetch customer data
         customer_data = local.fetch('Customer', {'customer_id': inspection_header.get('customer_id')})
         if not customer_data:
-            flash(f"Customer not found for ID: {inspection_header.get('customer_id')}")
             return "Customer not found", 404
         customer = customer_data[0]
 
-        # Fetch and sort inspection details
-        inspection_details = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-        inspection_details.sort(key=lambda x: x.get('time_ranking', 0))
-
-        # Update image URLs
-        logo = 'hv.png'
-        logo = url_for('static', filename=f'images/{logo.replace("./static/images/", "")}', _external=True)
-        css = url_for('static', filename=f'css/reportStyle.css', _external=True)
-
-        for row in inspection_details:
-            if row.get("image_url"):
-                row["image_url"] = url_for('static', filename=f'cache/{row["image_url"].replace("./static/cache/", "")}', _external=True)
         
-        if customer.get("image_url"):
-            customer["image_url"] = url_for('static', filename=f'cache/{customer["image_url"].replace("./static/cache/", "")}', _external=True)
+        risk_type = customer.get('risk_type')
+        inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
+        inspection_details = filter_by_time(calculate_risk(inspection_details_raw, risk_type))
 
-        if inspection_header.get("image_url"):
-            inspection_header["image_url"] = url_for('static', filename=f'cache/{inspection_header["image_url"].replace("./static/cache/", "")}', _external=True)
-
-        # Prepare report data
+        # Step 2: Prepare data for rendering and PDF generation
+        logo = 'https://zmusspsqfcmjpqnwkpmx.supabase.co/storage/v1/object/public/images//hv.png'
         report_data = {
             "customer": customer,
             "inspection_header": inspection_header,
             "rows": inspection_details,
-            "total_pages": 2 + len(inspection_details),
-            "logo": logo,
-            "css": css,
-            "revisions": revisions  # Use the fetched revisions here
+            "revisions": local.fetch('Revisions', {'inspection_id': inspection_id}),
+            "logo": logo
         }
 
-        # Generate and return the PDF
-        html_content = render_template('report.html', **report_data)
-        pdf = weasyprint.HTML(string=html_content).write_pdf()
-        pdf_stream = io.BytesIO(pdf)
+        total_pages = len(inspection_details) + 2
+        pages = [
+            render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}'),
+            render_template('report-table.html', **report_data, num=f'page 2 of {total_pages}')
+        ]
 
-        # Display the PDF inline in the browser
+        # Add detailed rows as HTML
+        for i, row in enumerate(inspection_details, start=3):
+            pages.append(render_template('report-detail.html', row=row, **report_data, num=f'page {i} of {total_pages}'))
+
+        # Step 3: Generate PDF in one pass rather than multiple calls
+        pdf_files = []
+        for page_html in pages:
+            pdf_bytes = HTML(string=page_html).write_pdf(resolution=72)  # Generate PDF from HTML
+            pdf_files.append(BytesIO(pdf_bytes))  # Store in memory
+
+        # Step 4: Merge PDFs using PdfMerger
+        merged_pdf = PdfMerger()
+        for pdf in pdf_files:
+            pdf.seek(0)  # Reset buffer before appending
+            merged_pdf.append(pdf)
+
+        final_pdf_buffer = BytesIO()
+        merged_pdf.write(final_pdf_buffer)
+        final_pdf_buffer.seek(0)
+        merged_pdf.close()
+        print("PDF merged successfully.")
         
-        response = Response(pdf_stream.getvalue(), mimetype='application/pdf')
-        response.headers['Content-Disposition'] = 'attachment; filename=report.pdf'
-        return response
+        inspection_date = inspection_header.get('date')
         
+        # Step 5: Generate Excel asynchronously
+        data_to_pass_to_excel = []
+        for row in inspection_details:
+    # Insert 'date' first, then unpack the rest
+            new_row = OrderedDict([('date', inspection_date)])
+            new_row.update(row)
+            data_to_pass_to_excel.append(new_row)
+            
+        excel = generate_excel(data_to_pass_to_excel)
+
+        # Step 6: Send email asynchronously using a background task
+        email = request.form.get('email')
+        customer_name = customer.get('name')
+        final_pdf_bytes = final_pdf_buffer.getvalue()
+
+        # Use threading to send email without blocking the response
+        def send_email_task():
+            Email.send_Email(final_pdf_bytes, excel, email, customer_name)
+
+        email_thread = Thread(target=send_email_task)
+        email_thread.start()
+
+        # Clean up and return response
+        del excel, customer
+        gc.collect()
+
+        # Return confirmation page after email is sent
+        return render_template('report_ready.html', email=email)
 
     except Exception as e:
-        flash(f"Error: {str(e)}")
-        return redirect('/select-Inspections')
+        print(f"Error: {e}")
+        return redirect('/')
 
 
 
+
+
+
+
+        
+
+
+
+
+
+
+def calculate_risk(data, risk_type):
+    """
+    Calculates a risk rating for each record based on 'probability' and 'consequence'.
+
+    Args:
+        data (list): List of dictionaries, each containing 'probability' and 'consequence' keys.
+
+    Returns:
+        list: The original list with an added 'risk_rating' key for each record.
+    """
+    # Updated probability mapping
+    probability_map = {
+        'a - almost certain': 5,
+        'b - likely': 4,
+        'c - possible': 3,
+        'd - unlikely': 2,
+        'e - rare': 1
+    }
+
+    # Updated consequence mapping
+    consequence_map = {
+        '5 - critical': 5,
+        '4 - major': 4,
+        '3 - moderate': 3,
+        '2 - minor': 2,
+        '1 - low': 1
+    }
+
+    # Function to determine risk rating based on the combined score
+    def hv(score):
+        if 8 <= score <= 10:
+            return 'Extreme'
+        elif 6 <= score <= 7:
+            return 'High'
+        elif score == 5:
+            return 'Medium'
+        else:
+            return 'Low'
+            
+            
+            
+            
+            
+
+    def nonStrutural(score):
+        if score < 7:
+            return 'Low Risk'
+        if score < 17:
+            return 'Medium Risk'
+        else:
+            return 'High Risk'
+        
+            
+    
+    def structural(score):
+        if score < 4:
+            return 'normal'
+        elif score < 11:
+            return 'Moderate'
+        elif score < 20:
+            return 'Abnormal'
+        else:
+            return 'Critical'
+        
+        
+    # Iterate over each record and calculate the risk rating
+    for record in data:
+        # Get the numerical values for probability and consequence
+        probability_score = probability_map.get(record.get('probability').lower(), 1)
+        consequence_score = consequence_map.get(record.get('consequence').lower(), 1)
+
+        # Calculate the combined risk score
+        
+        
+        # Assign the risk rating
+        match int(risk_type):
+            case 1:
+                combined_score = probability_score + consequence_score
+                record['risk_rating'] = hv(combined_score)
+            case 2:
+                combined_score = probability_score * consequence_score
+                record['risk_rating'] = nonStrutural(combined_score)
+            case 3:
+                combined_score = probability_score * consequence_score
+                record['risk_rating'] = structural(combined_score)
+            
+        
+                
+        
+        
+
+    return data
+
+    
+
+def generate_excel(data):
+    print_memory_usage()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Inspection Details"
+
+
+
+    #append the date to data before passing in
+    # Include headers, excluding 'display_on_report' and 'inspection_id'
+    headers = [key for key in data[0].keys() if key not in ('display_on_report', 'inspection_id', 'last_modified', 'detail_id', 'action_required', 'picture_caption', 'image_url')] if data else []
+    
+    #remove imageurl then add itr to the end
+    headers.append('image_url')
+    
+    # Write header row
+    for col_num, header in enumerate(headers, 1):
+        ws.cell(row=1, column=col_num, value=header)
+
+    
+    for row_num, row_data in enumerate(data, 2):
+        col_offset = 0  # Tracks the column index for each row
+        for key in headers:  # Only iterate through headers to ensure excluded columns are skipped
+            value = row_data.get(key)
+
+            ws.cell(row=row_num, column=col_offset + 1, value=value)
+            col_offset += 1
+
+    # Adjust column widths for better readability
+    for col_num in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col_num)].width = 25
+
+    # Save to a BytesIO stream
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output
+
+
+def filter_by_time(data):
+    """
+    Sorts a list of dictionaries by the 'time_ranking' key based on a custom ranking order.
+
+    Args:
+        data (list): List of dictionaries with a 'time_ranking' key.
+
+    Returns:
+        list: The sorted list of dictionaries.
+    """
+    # Define the custom ranking order
+    ranking_order = [
+        'Immediate', 
+        'Under 1 month', 
+        'Under 3 months', 
+        'Under 6 months', 
+        'Under 12 months', 
+        'Under 18 months', 
+        'Over 18 months'
+    ]
+
+    # Create a lookup dictionary for the ranking order
+    ranking_map = {value: index for index, value in enumerate(ranking_order)}
+
+    # Sort the data using the ranking order
+    sorted_data = sorted(data, key=lambda x: ranking_map.get(x['time_ranking'], float('inf')))
+
+    return sorted_data
+
+    
+import psutil
+
+def print_memory_usage():
+    process = psutil.Process()  # Get the current process
+    memory_in_mb = process.memory_info().rss / 1024 ** 2  # Resident Set Size in MB
+    print(f"Current memory usage: {memory_in_mb:.2f} MB")
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

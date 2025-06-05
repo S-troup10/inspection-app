@@ -11,43 +11,38 @@
         <a href="/inspection-Add" class="add-btn">Add Inspection</a>
     </div>
 
-    <div class="inspection-list">
-        {% if inspections %}
-            <table class="inspection-table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Customer</th>
-                        <th>Description</th>
-                        <th>Date</th>
-                        <th>Summary</th>
-                        <th>Edit</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for inspection in inspections %}
-                        <tr onclick="redirectToPrintReports({{ inspection.inspection_id }})">
-                            <td>{{ inspection.title }}</td>
-                            <td>{{ inspection.name }}</td>
-                            <td>{{ inspection.description }}</td>
-                            <td>{{ inspection.date }}</td>
-                            <td>{{ inspection.summary }}</td>
-                            <td>
-                                <a href="/inspection-Edit/{{ inspection.inspection_id }}" class="edit-btn">Edit</a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No inspections found.</p>
-        {% endif %}
+    <div class="inspection-list" id='table'>
+        
     </div>
-    <script>
-        // Redirect to print reports page when a row is clicked
-        function redirectToPrintReports(inspectionId) {
-            window.location.href += `/inspection-Details/${inspectionId}`;
+    <script src="/static/js/table.js"></script>
+<script>
+    // Wait for DOM to load and then call generateTable
+    document.addEventListener('DOMContentLoaded', () => {
+        // Call the function, specifying which columns to include
+        generateTable('HV-storage', 'Inspection_Header', 'table', ['title', 'date', 'description', 'image_url', 'inspection_id']);
+    });
+
+    // Add event listener for row clicks
+    document.getElementById('table').addEventListener('click', function(event) {
+        const row = event.target.closest('tr');
+        // Make sure the click isn't coming from the edit button
+        if (row && !event.target.closest('button.edit-btn')) {
+            // Find the inspection_id field within the second-to-last column
+            const inspectionId = row.querySelectorAll('td')[row.cells.length - 2].textContent; 
+            if (inspectionId) {
+                redirectToPrintReports(inspectionId);
+            }
         }
-    </script>
+    });
+
+    function redirectToPrintReports(inspectionId) {
+        // Store the inspectionId in local storage
+        localStorage.setItem('current_inspection_id', inspectionId);
+        
+        // Redirect to the inspection details page without query parameters
+        window.location.href = '/inspection-Details';
+    }
+    
+</script>
 </section>
 {% endblock %}

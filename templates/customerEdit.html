@@ -3,24 +3,222 @@
 {% block title %}Edit Customer{% endblock %}
 
 {% block content %}
-<section class="edit-section">
-    <h2 class="section-title">Edit Customer</h2>
-    <form action="" method="POST" class="edit-form">
+<section class="form-container">
+    <h2>Edit Customer</h2>
+    <button type="button" class="delete-btn" onclick="confirmDelete()">Delete</button>
+    <form id="editCustomerForm">
         <div class="form-group">
             <label for="name">Name</label>
-            <input type="text" id="name" name="name" value="{{ customer.name }}" required>
+            <input type="text" id="name" name="name" required>
         </div>
         <div class="form-group">
             <label for="site">Site</label>
-            <input type="text" id="site" name="site" value="{{ customer.site }}" required>
+            <input type="text" id="site" name="site" required>
         </div>
         <div class="form-group">
-            <label for="logo">Logo URL</label>
-            <input type="text" id="logo" name="logo" value="{{ customer.logo_Url }}" placeholder="Enter logo URL">
+            <label for="risk_type">Risk Type:</label>
+            <select id="risk_type" name="risk_type" required>
+                <option value="" disabled selected>Select a risk type</option>
+                <option value="1">HV Engineers Standard</option>
+                <option value="2">Glencore Strutural</option>
+                <option value="3">Glencore Non Strutural</option>
+            </select>
         </div>
+
         <button type="submit" class="submit-btn">Save Changes</button>
-        <a href="/customer" class="cancel-btn">Cancel</a>
+        
     </form>
 </section>
+<script src='/static/js/db.js'></script>
+<script>
+    const dbName = "HV-storage";  
+    const storeName = "Customer";  
 
+    function updateCustomerData(id, name, site, last_modified, risk_type) {
+        const request = indexedDB.open(dbName, 1);
+
+        request.onsuccess = function (event) {
+            const db = event.target.result;
+            const transaction = db.transaction(storeName, "readwrite");
+            const store = transaction.objectStore(storeName);
+
+            const getRequest = store.get(id);
+
+            getRequest.onsuccess = function (event) {
+                const existingCustomer = event.target.result;
+
+                if (existingCustomer) {
+                    existingCustomer.name = name;
+                    existingCustomer.site = site;
+                    existingCustomer.risk_type = risk_type;
+                    existingCustomer.last_modified = last_modified;
+
+                    const updateRequest = store.put(existingCustomer);
+
+                    updateRequest.onsuccess = function () {
+                        alert("Customer updated successfully!");
+                        window.location.href = "/customer"; 
+                    };
+
+                    updateRequest.onerror = function (event) {
+                        console.error("Error updating customer:", event.target.error);
+                        alert("Failed to update customer. Please try again.");
+                    };
+                } else {
+                    alert("Customer not found. Please refresh and try again.");
+                }
+            };
+
+            getRequest.onerror = function (event) {
+                console.error("Error retrieving customer:", event.target.error);
+                alert("Failed to retrieve customer. Please try again.");
+            };
+
+            transaction.onerror = function (event) {
+                console.error("Transaction failed:", event.target.error);
+                alert("Transaction failed. Please try again.");
+            };
+        };
+
+        request.onerror = function (event) {
+            console.error("Error opening database:", event.target.error);
+            alert("Failed to open database. Please try again.");
+        };
+    }
+
+    function getCurrentDateTime() {
+        const now = new Date();
+        return now.toISOString().replace("T", " ").split(".")[0];  
+    }
+
+    const customerData = JSON.parse(localStorage.getItem("edit_record"));
+
+    if (customerData) {
+        document.getElementById("name").value = customerData.name || "";
+        document.getElementById("site").value = customerData.site || "";
+        document.getElementById("risk_type").value = customerData.risk_type || "";
+    } else {
+        console.error("No customer data found in localStorage.");
+    }
+
+    document.getElementById("editCustomerForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const name = document.getElementById("name").value;
+        const site = document.getElementById("site").value;
+        const risk_type = document.getElementById("risk_type").value;
+
+        if (customerData) {
+            updateCustomerData(
+                customerData.customer_id,
+                name,
+                site,
+                getCurrentDateTime(),
+                risk_type
+            );
+        } else {
+            alert("No customer record found to update.");
+        }
+    });
+
+
+
+    const confirmDelete = () => {
+        const confirmation = prompt("Deleting this customer will also permanently delete all associated inspections and all their data. Type 'confirm' to permanently delete this record:");
+
+        if (confirmation === 'confirm') {
+            const localStorage_id = JSON.parse(localStorage.getItem('edit_record')); 
+            const customer_id = localStorage_id.customer_id;
+
+            deleteRecord('Customer', customer_id)
+                .then(() => {
+                    alert('Record deleted successfully!');
+                    window.location.href = "/customer";  // Redirect after delete
+                })
+                .catch((err) => {
+                    console.error('Error deleting record:', err);
+                    alert('Failed to delete record. Check console for details.');
+                });
+        } else {
+            alert('Invalid Confirmation.');
+        }
+    };
+</script>
+
+<style>
+    .form-container {
+        padding: 20px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 1000px;
+        min-width: 600px;
+        margin: auto;
+    }
+
+    h2 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    input, select, textarea {
+        width: calc(100% - 16px);
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        background-color: #fff;
+    }
+
+    .submit-btn {
+        display: inline-block;
+        background-color: #007bff;
+        color: white;
+        padding: 10px 15px;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        transition: background-color 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: #0056b3;
+    }
+
+    #imagePreviewContainer img {
+        display: block;
+        margin-top: 10px;
+        cursor: pointer;
+        width: 100px;
+    }
+    .delete-btn {
+        background-color: #dc3545;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 15px;
+    }
+
+    .delete-btn:hover {
+        background-color: #c82333;
+    }
+</style>
 {% endblock %}
