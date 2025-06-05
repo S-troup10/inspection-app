@@ -28,7 +28,7 @@ app.config['UPLOAD_FOLDER'] = './static/cache'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 3000 * 3000  # 100 MB limit
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
-PASSWORD = 'abc123'
+PASSWORD = 'HV3G849'
 
 #service worker setup
 @app.after_request
