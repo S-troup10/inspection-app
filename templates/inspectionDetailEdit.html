@@ -25,20 +25,44 @@
                 <label for="action_required" class="text-gray-700">Action Required</label>
             </div>
             
-            <div>
-                <label for="consequence" class="block text-gray-700">Consequence</label>
-                <input type="text" id="consequence" name="consequence" class="w-full border-gray-300 rounded-lg px-3 py-2 focus:ring focus:ring-blue-200">
-            </div>
+    <div>
+  <label for="consequence" class="block text-gray-700">Consequence</label>
+
+  <select id="consequence"
+          name="consequence"
+          class="w-full border-gray-300 rounded-lg px-3 py-2 focus:ring focus:ring-blue-200">
+
+    
+    <option value="1 - Low">1 - Low</option>
+    <option value="2 - Minor">2 - Minor</option>
+    <option value="3 - Moderate">3 - Moderate</option>
+    <option value="4 - Major">4 - Major</option>
+    <option value="5 - Critical">5 - Critical</option>
+  </select>
+</div>
+
             
             <div>
                 <label for="time_ranking" class="block text-gray-700">Time Ranking</label>
                 <input type="text" id="time_ranking" name="time_ranking" class="w-full border-gray-300 rounded-lg px-3 py-2 focus:ring focus:ring-blue-200">
             </div>
             
-            <div>
-                <label for="probability" class="block text-gray-700">Probability</label>
-                <input id="probability" name="probability" class="w-full border-gray-300 rounded-lg px-3 py-2 focus:ring focus:ring-blue-200">
-            </div>
+     <div>
+  <label for="probability" class="block text-gray-700">Probability</label>
+
+  <select id="probability"
+          name="probability"
+          class="w-full border-gray-300 rounded-lg px-3 py-2 focus:ring focus:ring-blue-200">
+
+    
+    <option value="A - Almost Certain">A - Almost Certain</option>
+    <option value="B - Likely">B - Likely</option>
+    <option value="C - Possible">C - Possible</option>
+    <option value="D - Unlikely">D - Unlikely</option>
+    <option value="E - Rare">E - Rare</option>
+  </select>
+</div>
+
             
             
             <div>
@@ -59,7 +83,7 @@
             <div>
                 <label for="picture" class="block text-gray-700">Picture</label>
                 <input type="file" id="picture" name="picture" class="w-full border-gray-300 rounded-lg px-3 py-2 focus:ring focus:ring-blue-200 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600">
-                <img id="picture-preview" src="#" alt="Picture Preview" style="display: none; max-width: 100px;">
+                <img id="picture-preview" src="#" alt="Picture Preview" style="display: none;">
             </div>
             
             <div>
@@ -76,12 +100,13 @@
     
 <script src="/static/js/db.js"></script>
 <script>
-
+let change = false;
 //pic preview
 document.getElementById('picture').addEventListener('change', function(event) {
     const file = event.target.files[0];
     const preview = document.getElementById('picture-preview');
     if (file) {
+        change = true;
         const reader = new FileReader();
         reader.onload = function(e) {
             preview.src = e.target.result;
@@ -112,11 +137,31 @@ const populateForm = () => {
             document.getElementById('observations').value = parsedData.observations || '';
             document.getElementById('recommendations').value = parsedData.recommendations || '';
             document.getElementById('picture_caption').value = parsedData.picture_caption || '';
-            document.getElementById('action_required').checked = parsedData.action_required === true || parsedData.action_required === "true";
+            document.getElementById('action_required').checked = parsedData.action_required === true || parsedData.action_required === "true" || parsedData.action_required == 'Yes';
 
-            document.getElementById('consequence').value = parsedData.consequence || '';
+
+            const imgEle = document.getElementById('picture-preview');
+            
+
+            if (parsedData.image_url !== undefined && parsedData.image_url !== null && parsedData.image_url !== '') {
+
+          if (typeof parsedData.image_url === 'string' && parsedData.image_url.includes('https')) {
+              imgEle.src = parsedData.image_url;
+              imgEle.style.display = 'block';
+          } else{
+              renderImageByImageId(parsedData.image_url, imgEle);
+          }
+            }
+            else {
+                imgEle.alt = 'no image';
+            }
+
+
+            document.getElementById('consequence').value = parsedData?.consequence || '';
+
             document.getElementById('time_ranking').value = parsedData.time_ranking || '';
-            document.getElementById('probability').value = parsedData.probability || '';
+            const probabilityEl = document.getElementById('probability');
+            probabilityEl.value = parsedData?.probability || ''; 
         } catch (error) {
             console.error("Error parsing inspection data:", error);
         }
@@ -170,7 +215,7 @@ const submitForm = (event) => {
             recommendations: document.getElementById('recommendations').value,
             picture_caption: document.getElementById('picture_caption').value,
             last_modified: getCurrentDateTime(),
-            image_url: null  // Will be updated via the image insertion
+            
         };
 
         // Save the inspection data (and image) using your async function from db.js
@@ -180,12 +225,12 @@ const submitForm = (event) => {
 
 // Opens the database and calls insertDataWithImage (from db.js)
 const saveToIndexedDB = (storeName, inspectionData, imageBlob) => {
-    const request = indexedDB.open(dbName, 1);
+ 
 
+    if (change) {
 
-    request.onsuccess = (event) => {
         // Call your async insertDataWithImage from db.js
-        insertDataWithImage(storeName, inspectionData, imageBlob)
+        upsertDetailWithImage(storeName, inspectionData, imageBlob)
             .then(() => {
                 alert('Inspection details updated successfully!');
                 window.location.href = "/inspection-Details";
@@ -193,12 +238,86 @@ const saveToIndexedDB = (storeName, inspectionData, imageBlob) => {
             .catch((error) => {
                 alert("Error saving inspection data: " + error);
             });
-    };
+    } else {
+        //get the old link from local storaGE
+         const local = JSON.parse(localStorage.getItem('edit_record')) || {};
+        inspectionData.image_url = local.image_url || '';
+        upsertDetailWithImage(storeName, inspectionData, null)
+            .then(() => {
+                alert('Inspection details updated successfully!');
+                window.location.href = "/inspection-Details";
+            })
+            .catch((error) => {
+                alert("Error saving inspection data: " + error);
+            });
 
-    request.onerror = (event) => {
-        console.error('Error opening IndexedDB:', event);
-    };
+    }
+   
+        
+
+
 };
+
+
+
+
+
+
+
+const upsertDetailWithImage = (storeName, record, imageBlob) => {
+    return new Promise((resolve, reject) => {
+        if (!db) {
+            reject('Database is not open.');
+            return;
+        }
+
+        // Make sure we have a stable primary key
+        if (!record.detail_id) {
+            record.detail_id = crypto.randomUUID();
+        }
+
+        const transaction = db.transaction(['Images', storeName], 'readwrite');
+        const imagesStore  = transaction.objectStore('Images');
+        const dataStore    = transaction.objectStore(storeName);
+
+        /**
+         * Helper to finish by writing/over‑writing the main inspection record.
+         * Uses put() so it updates if the key already exists, inserts otherwise.
+         */
+        const saveInspection = (finalRecord) => {
+            const request = dataStore.put(finalRecord);
+            request.onsuccess = () => resolve();
+            request.onerror   = (evt) => reject(evt.target.error);
+        };
+
+        try {
+            if (imageBlob) {
+                // Create or replace the image linked to this inspection
+                const imageRecord = { blob: imageBlob, detail_id: record.detail_id };
+                const imgReq = imagesStore.put(imageRecord);   // put() acts as up‑sert
+
+                imgReq.onsuccess = (evt) => {
+                    // Use the auto‑incremented key returned by IndexedDB as a lightweight image URL
+                    const imageId = evt.target.result;
+                    saveInspection({ ...record, image_url: imageId });
+                };
+
+                imgReq.onerror = (evt) => reject(evt.target.error);
+            } else {
+                // No new image – keep whatever is already stored (if anything)
+                saveInspection(record);
+            }
+        } catch (err) {
+            transaction.abort();
+            reject(`Transaction error: ${err}`);
+        }
+    });
+};
+
+
+
+
+
 
 // Delete record function (assumes deleteRecord is defined in db.js or elsewhere)
 const confirmDelete = () => {

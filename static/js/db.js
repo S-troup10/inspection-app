@@ -64,7 +64,45 @@ const uploadImageToSupabase = async (imageBlob, imageId) => {
 
 
 
+function renderImageByImageId(imageId, imgEl) {
+  return new Promise((resolve, reject) => {
+    // Open IndexedDB inside the function
+    const request = indexedDB.open('HV-storage', 1);
 
+    request.onerror = (event) => {
+      reject(`IndexedDB error: ${event.target.error}`);
+    };
+
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+
+      const transaction = db.transaction(['Images'], 'readonly');
+      const store = transaction.objectStore('Images');
+      const getRequest = store.get(imageId);
+
+      getRequest.onerror = (e) => reject(e.target.error);
+
+      getRequest.onsuccess = (e) => {
+        const record = e.target.result;
+        if (!record?.blob) {
+          reject('Image not found');
+          return;
+        }
+        const url = URL.createObjectURL(new Blob([record.blob], { type: 'image/jpeg' }));
+        imgEl.src = url;
+        imgEl.style.display = 'block';
+
+        // Optional: release the object URL after image loads
+        imgEl.onload = () => URL.revokeObjectURL(url);
+
+        resolve(url);
+      };
+    };
+
+    // Optionally handle onupgradeneeded here if needed:
+    // request.onupgradeneeded = e => { ... }
+  });
+}
 
 const insertDataWithImage = async (storeName, record, imageBlob) => {
     return new Promise((resolve, reject) => {

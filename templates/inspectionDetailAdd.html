@@ -222,7 +222,7 @@ document.querySelectorAll('input[name="time_ranking"]:not([value="Other"])').for
         const area = document.getElementById('area').value;
         const item = document.getElementById('item').value;
         const unit = document.getElementById('unit').value;
-        const action_required = document.getElementById('action_required').checked ? 'Yes' : 'No';
+        const action_required = document.getElementById('action_required').checked ? true : false;
     
         const probability = document.querySelector('input[name="probability"]:checked')?.dataset.label;
         const consequence = document.querySelector('input[name="consequence"]:checked')?.dataset.label;
