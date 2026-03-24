@@ -110,9 +110,6 @@ def handle_pdf_upload(pdf_bytes: bytes, filename: str) -> str:
         if pdf_size > MAX_PDF_SIZE:
             # If the PDF is too big, upload it to Supabase
             pdf_url = local.upload_pdf_to_supabase(pdf_bytes, filename)
-            pdf_url = pdf_url.rstrip('?')
-            #pdf_url = f"{pdf_url}?download=true"
-
             return pdf_url  # Return the URL if uploaded to Supabase
         
         else:

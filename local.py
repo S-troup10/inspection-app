@@ -103,7 +103,7 @@ def upload_pdf_to_supabase(pdf_bytes: bytes, file_path: str) -> str:
             return f"Failed to upload PDF: {response.error}"
 
         # Get the public URL of the uploaded PDF
-        pdf_url = supabase.storage.from_("report").get_public_url(file_path)
+        pdf_url = f"{SUPABASE_URL}/storage/v1/object/public/report/{file_path}"
         print(f"PDF uploaded successfully to Supabase. URL: {pdf_url}")
         return pdf_url
 
