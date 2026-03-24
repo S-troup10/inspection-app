@@ -61,8 +61,10 @@ def send_Email(pdf, excel, recipient_email, customer):
 
         if pdf_link:
             email_body += f"""
-            <p>The report is too large to attach. You can download it by clicking the link below:</p>
-            <p><a href="{pdf_link}" style="color: #007bff; text-decoration: none; font-weight: bold;">Click here</a> to download your report.</p>
+            <p>The report is too large to attach directly. You can download it using the link below:</p>
+            <p><a href="{pdf_link}" style="color: #007bff; text-decoration: underline; font-weight: bold;">Click me</a> to download your report.</p>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all;">{pdf_link}</p>
             """
 
         email_body += """
