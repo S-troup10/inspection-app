@@ -15,7 +15,6 @@
 }
 
 html, body {
-    overflow-x: hidden;
     font-family: var(--font-family);
     color: var(--text-color);
     line-height: 1.5;
@@ -91,7 +90,7 @@ html, body {
     text-align: left;
     border-bottom: 1px solid #e2e8f0;
     vertical-align: middle;
-    word-break: break-word;
+    white-space: nowrap;
 }
 
 .styled-table th {
@@ -141,67 +140,18 @@ html, body {
     background-color: #334155;
 }
 
-@media (max-width: 640px) {
-    /* Stop list containers from enabling sideways scroll */
+/* ─── Mobile / iPad: horizontally scrollable table ─── */
+@media (max-width: 1024px) {
     .customer-list,
     .inspection-list,
     .list-page .list-container {
-        overflow-x: hidden;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .styled-table thead {
-        display: none;
-    }
-
-    .styled-table,
-    .styled-table tbody,
-    .styled-table tr,
-    .styled-table td {
-        display: block;
-        width: 100%;
-    }
-
-    .styled-table tr {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        margin-bottom: 12px;
-        padding: 4px 0;
-        background: #fff;
-    }
-
-    .styled-table tr:hover td {
-        background-color: transparent;
-    }
-
-    .styled-table td {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 8px 14px;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 14px;
-        word-break: break-word;
-    }
-
-    .styled-table td:last-child {
-        border-bottom: none;
-    }
-
-    /* Label on the left — fixed width, never grows */
-    .styled-table td::before {
-        content: attr(data-label);
-        flex: 0 0 110px;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #64748b;
-        white-space: nowrap;
-        padding-top: 2px;
-    }
-
-    .styled-table img {
-        margin: 0;
+    .styled-table {
+        width: max-content;
+        min-width: 100%;
     }
 }
 
