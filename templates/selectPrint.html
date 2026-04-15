@@ -9,9 +9,14 @@
         <h2 class="section-title">Select Inspection</h2>
     </div>
 
-    <div class="inspection-list">
+    <div class="view-toggle" id="print-toggle">
+        <button class="toggle-btn active" onclick="switchPrintView('table')"><i class="fas fa-table"></i> Table</button>
+        <button class="toggle-btn" onclick="switchPrintView('unlocked')"><i class="fas fa-lock-open"></i> Unlocked</button>
+    </div>
+
+    <div class="inspection-list" id="print-list">
         {% if inspections and inspections|length > 0 %}
-        <table class="styled-table select-table">
+        <table class="styled-table select-table" id="print-table">
             <thead>
                 <tr>
                     <th style="width:32%">Title</th>
@@ -38,6 +43,28 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    function switchPrintView(view) {
+        localStorage.setItem('preferred_view_print', view);
+        const list = document.getElementById('print-list');
+        const table = document.getElementById('print-table');
+        const btns = document.querySelectorAll('#print-toggle .toggle-btn');
+        btns.forEach(b => b.classList.remove('active'));
+        btns[view === 'table' ? 0 : 1].classList.add('active');
+        if (view === 'unlocked') {
+            list.style.overflowX = 'auto';
+            table.classList.add('styled-table--unlocked');
+        } else {
+            list.style.overflowX = '';
+            table.classList.remove('styled-table--unlocked');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem('preferred_view_print');
+        if (saved === 'unlocked') switchPrintView('unlocked');
+    });
+</script>
 
 <!-- Generate Report Modal -->
 <div id="inspection-modal" class="modal fixed inset-0 flex items-end sm:items-center justify-center bg-black bg-opacity-50 px-0 sm:px-4" aria-hidden="true">

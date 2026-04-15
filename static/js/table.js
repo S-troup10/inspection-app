@@ -88,23 +88,35 @@ const _initToggle = (records, columns, containerId, onRowClick) => {
     cardBtn.classList.add('toggle-btn');
     cardBtn.innerHTML = '<i class="fas fa-th-large"></i> Cards';
 
+    const unlockedBtn = document.createElement('button');
+    unlockedBtn.classList.add('toggle-btn');
+    unlockedBtn.innerHTML = '<i class="fas fa-lock-open"></i> Unlocked';
+
     toggle.appendChild(tableBtn);
     toggle.appendChild(cardBtn);
+    toggle.appendChild(unlockedBtn);
     parent.insertBefore(toggle, container);
 
     const switchView = (view) => {
         localStorage.setItem('preferred_view', view);
         tableBtn.classList.toggle('active', view === 'table');
         cardBtn.classList.toggle('active', view === 'card');
+        unlockedBtn.classList.toggle('active', view === 'unlocked');
         if (view === 'table') {
+            container.style.overflowX = '';
             createTable(records, columns, containerId, onRowClick);
-        } else {
+        } else if (view === 'card') {
+            container.style.overflowX = '';
             createCards(records, columns, containerId, onRowClick);
+        } else {
+            container.style.overflowX = 'auto';
+            createUnlockedTable(records, columns, containerId, onRowClick);
         }
     };
 
-    tableBtn.onclick = () => switchView('table');
-    cardBtn.onclick  = () => switchView('card');
+    tableBtn.onclick   = () => switchView('table');
+    cardBtn.onclick    = () => switchView('card');
+    unlockedBtn.onclick = () => switchView('unlocked');
     switchView(localStorage.getItem('preferred_view') || 'table');
 };
 
@@ -174,6 +186,14 @@ const createTable = (records, columns, containerId, onRowClick = null) => {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
     container.appendChild(table);
+};
+
+// ─── Unlocked table view (horizontal scroll, no truncation) ──────────────────
+
+const createUnlockedTable = (records, columns, containerId, onRowClick = null) => {
+    createTable(records, columns, containerId, onRowClick);
+    const table = document.getElementById(containerId).querySelector('.styled-table');
+    if (table) table.classList.add('styled-table--unlocked');
 };
 
 // ─── Card view ────────────────────────────────────────────────────────────────

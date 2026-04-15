@@ -147,6 +147,20 @@ html, body {
     cursor: pointer;
 }
 
+/* Unlocked table: no truncation, scroll horizontally */
+.styled-table--unlocked {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+}
+
+.styled-table--unlocked th,
+.styled-table--unlocked td {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
 .empty-msg {
     padding: 20px;
     color: #64748b;
