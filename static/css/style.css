@@ -142,6 +142,13 @@ html, body {
 }
 
 @media (max-width: 640px) {
+    /* Stop list containers from enabling sideways scroll */
+    .customer-list,
+    .inspection-list,
+    .list-page .list-container {
+        overflow-x: hidden;
+    }
+
     .styled-table thead {
         display: none;
     }
@@ -158,7 +165,7 @@ html, body {
         border: 1px solid #e2e8f0;
         border-radius: 10px;
         margin-bottom: 12px;
-        padding: 8px 0;
+        padding: 4px 0;
         background: #fff;
     }
 
@@ -168,32 +175,33 @@ html, body {
 
     .styled-table td {
         display: flex;
-        align-items: center;
-        gap: 10px;
+        align-items: flex-start;
+        gap: 8px;
         padding: 8px 14px;
         border-bottom: 1px solid #f1f5f9;
         font-size: 14px;
-        text-align: right;
+        word-break: break-word;
     }
 
     .styled-table td:last-child {
         border-bottom: none;
     }
 
+    /* Label on the left — fixed width, never grows */
     .styled-table td::before {
         content: attr(data-label);
-        flex: 1;
-        text-align: left;
+        flex: 0 0 110px;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: #64748b;
         white-space: nowrap;
+        padding-top: 2px;
     }
 
     .styled-table img {
-        margin-left: auto;
+        margin: 0;
     }
 }
 
