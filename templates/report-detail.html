@@ -171,7 +171,9 @@
                 <figure>
                     {% if row.image_url %}
                     <img src="{{ row.image_url }}" alt="Inspection Image" />
-                    <figcaption>Caption: {{ row.picture_caption }}</figcaption>
+                    {% if row.picture_caption %}
+                    <figcaption>{{ row.picture_caption }}</figcaption>
+                    {% endif %}
                     {% endif %}
                 </figure>
             </div>

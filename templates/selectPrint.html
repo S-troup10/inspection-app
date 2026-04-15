@@ -227,13 +227,6 @@
         revisionsModal.classList.remove('show');
     }
     
-    // Optional: Close when clicking outside
-    window.addEventListener('click', function (event) {
-        if (event.target === revisionsModal) {
-            closeRevisionsModal();
-        }
-    });
-    
 
 
 
@@ -304,46 +297,33 @@ function openModal(inspectionId, inspectionTitle) {
 
     // Show the spinner and submit the form
     document.getElementById('inspection-form').addEventListener('submit', function (e) {
-        e.preventDefault();  // Prevent default form submission
-        console.log('this has been run');
+        e.preventDefault();
         closeModal();
-
-        // Show the spinner
         spinner.classList.remove('hidden');
-        spinner.style.display = 'block';  // Ensure it is visible (in case of display manipulation)
-    
-        const form = this;
-        const formData = new FormData(form);
-    
-        // Simulate form submission delay (for lazy loading effect)
-        setTimeout(() => {
-            // Submit the form via AJAX or normal form submission (here we're using regular form submit)
-            form.submit();  // Proceed with the normal form submission after spinner is shown
-        }, 10);  // Simulate a 1-second delay before submitting
+        spinner.style.display = 'block';
+        this.submit();
     });
 
-    // Close modal when clicking outside of it
-    window.onclick = function (event) {
+    // Close modals when clicking outside
+    window.addEventListener('click', function (event) {
         if (event.target === modal) {
             closeModal();
         }
-    };
+        if (event.target === revisionsModal) {
+            closeRevisionsModal();
+        }
+    });
 </script>
 
 <style>
     #revisions-modal {
         z-index: 2001;
-        width: 100%;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
     }
     
     
     .highlighted {
-        background-color:rgb(7, 132, 241);  /* Light blue color */
-        border: 4px solid #007bff;
+        background-color: #dbeafe;
+        border: 2px solid #3b82f6;
         transition: background-color 0.3s ease, border 0.3s ease;
     }
     

@@ -57,12 +57,6 @@ header .subtitle {
     color: var(--accent-color);
 }
 
-header .subtitle {
-    font-size: 1.2rem;
-    font-weight: 300;
-    color: var(--accent-color);
-}
-
 /* Back Icon Styling */
 .back-icon {
     position: absolute;
@@ -161,22 +155,6 @@ main {
 .action-buttons .btn:hover {
     transform: scale(1.05);  /* Slight scaling effect on hover */
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);  /* More shadow for hover */
-}
-
-/* Form Styling */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 20px 30px;
-    border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    border: 1px solid #ddd;
-    overflow: hidden;
 }
 
 form label {
@@ -282,12 +260,6 @@ footer p {
     }
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 .customer-section {
     padding: 20px;
     background-color: #f9f9f7;
@@ -298,25 +270,6 @@ body {
 }
 
 
-@media (max-width: 768px) {
-    header h1 {
-        font-size: 2.5rem; /* Scale down the title on smaller screens */
-    }
-
-    /* Adjust the back icon to be smaller and more spaced out */
-    .back-icon {
-        font-size: 2rem; /* Smaller back icon */
-        left: 15px; /* Adjust the position */
-        top: 15px; /* Adjust the position */
-    }
-
-    /* Ensure the title has space from the back button */
-    .container {
-        
-        justify-content: space-between;
-        align-items: center;
-    }
-}
 .section-title {
     font-size: 28px;
     margin-bottom: 20px;
@@ -458,7 +411,11 @@ body {
 .edit-section button:hover {
     background-color: #b0b0b0;
 }
-/* General form styling */
+/* Form Styling */
+.form-group {
+    margin-bottom: 20px;
+}
+
 .form-container {
     max-width: 600px;
     margin: 20px auto;
@@ -468,11 +425,6 @@ body {
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
-}
-
-/* Form group styling */
-.form-group {
-    margin-bottom: 20px;
 }
 
 .form-group input[type="text"],

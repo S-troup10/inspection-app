@@ -1,7 +1,3 @@
-console.log('db.js ran');
-
-
-
 const SUPABASE_URL = 'https://zmusspsqfcmjpqnwkpmx.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdXNzcHNxZmNtanBxbndrcG14Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTUwNDcwNiwiZXhwIjoyMDU1MDgwNzA2fQ.Fl9y2FJhD09xBadglE9hzv5tFoGCxAU9_hRXZnePDg0';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -13,7 +9,6 @@ const openDB = () => {
 
     request.onsuccess = (event) => {
         db = event.target.result;
-        console.log('IndexedDB opened successfully');
     };
 
     request.onerror = (event) => {
@@ -34,8 +29,6 @@ const openDB = () => {
 
         const imageStore = db.createObjectStore('Images', { keyPath: 'image_id', autoIncrement: true });
         imageStore.createIndex('image_id', 'image_id', { unique: false });
-
-        console.log('Database structure initialized.');
     };
 };
 
@@ -50,8 +43,6 @@ const getDataFromIndexedDB = (storeName) => {
 };
 
 
-
-
 const uploadImageToSupabase = async (imageBlob, imageId) => {
     const fileName = `image_${imageId}_${Date.now()}.jpg`;
     const { data, error } = await _supabase.storage.from('images').upload(fileName, imageBlob, { contentType: 'image/jpeg' });
@@ -63,45 +54,36 @@ const uploadImageToSupabase = async (imageBlob, imageId) => {
 };
 
 
-
 function renderImageByImageId(imageId, imgEl) {
-  return new Promise((resolve, reject) => {
-    // Open IndexedDB inside the function
-    const request = indexedDB.open('HV-storage', 1);
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('HV-storage', 1);
 
-    request.onerror = (event) => {
-      reject(`IndexedDB error: ${event.target.error}`);
-    };
+        request.onerror = (event) => {
+            reject(`IndexedDB error: ${event.target.error}`);
+        };
 
-    request.onsuccess = (event) => {
-      const db = event.target.result;
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const transaction = db.transaction(['Images'], 'readonly');
+            const store = transaction.objectStore('Images');
+            const getRequest = store.get(imageId);
 
-      const transaction = db.transaction(['Images'], 'readonly');
-      const store = transaction.objectStore('Images');
-      const getRequest = store.get(imageId);
+            getRequest.onerror = (e) => reject(e.target.error);
 
-      getRequest.onerror = (e) => reject(e.target.error);
-
-      getRequest.onsuccess = (e) => {
-        const record = e.target.result;
-        if (!record?.blob) {
-          reject('Image not found');
-          return;
-        }
-        const url = URL.createObjectURL(new Blob([record.blob], { type: 'image/jpeg' }));
-        imgEl.src = url;
-        imgEl.style.display = 'block';
-
-        // Optional: release the object URL after image loads
-        imgEl.onload = () => URL.revokeObjectURL(url);
-
-        resolve(url);
-      };
-    };
-
-    // Optionally handle onupgradeneeded here if needed:
-    // request.onupgradeneeded = e => { ... }
-  });
+            getRequest.onsuccess = (e) => {
+                const record = e.target.result;
+                if (!record?.blob) {
+                    reject('Image not found');
+                    return;
+                }
+                const url = URL.createObjectURL(new Blob([record.blob], { type: 'image/jpeg' }));
+                imgEl.src = url;
+                imgEl.style.display = 'block';
+                imgEl.onload = () => URL.revokeObjectURL(url);
+                resolve(url);
+            };
+        };
+    });
 }
 
 const insertDataWithImage = async (storeName, record, imageBlob) => {
@@ -116,46 +98,37 @@ const insertDataWithImage = async (storeName, record, imageBlob) => {
         const dataStore = transaction.objectStore(storeName);
 
         try {
-            // Insert the customer record first
             const dataRequest = dataStore.put(record);
             dataRequest.onsuccess = (event) => {
-                const customerId = event.target.result; // Get the auto-incremented ID
-                console.log("Inserted customer with ID:", customerId);
+                const recordId = event.target.result;
 
                 if (imageBlob) {
-                    // Store the image with reference to customer_id
-                    const imageRecord = { blob: imageBlob, customer_id: customerId };
+                    const imageRecord = { blob: imageBlob, customer_id: recordId };
                     const imageRequest = imagesStore.put(imageRecord);
 
                     imageRequest.onsuccess = (event) => {
-                        const imageId = event.target.result; // Get the image ID
-                        console.log("Inserted image with ID:", imageId);
+                        const imageId = event.target.result;
 
-                        // Now update the customer record with the image URL (imageId)
                         const updateTransaction = db.transaction(storeName, 'readwrite');
                         const updateStore = updateTransaction.objectStore(storeName);
-                        const getCustomerRequest = updateStore.get(customerId);
+                        const getRequest = updateStore.get(recordId);
 
-                        getCustomerRequest.onsuccess = () => {
-                            const customer = getCustomerRequest.result;
-                            if (customer) {
-                                customer.image_url = imageId; // Assign image ID as reference
-
-                                const updateRequest = updateStore.put(customer);
-                                updateRequest.onsuccess = () => {
-                                    console.log("Updated customer with image_url:", imageId);
-                                    resolve();
-                                };
+                        getRequest.onsuccess = () => {
+                            const row = getRequest.result;
+                            if (row) {
+                                row.image_url = imageId;
+                                const updateRequest = updateStore.put(row);
+                                updateRequest.onsuccess = () => resolve();
                                 updateRequest.onerror = (event) => reject(event.target.error);
                             }
                         };
 
-                        getCustomerRequest.onerror = (event) => reject(event.target.error);
+                        getRequest.onerror = (event) => reject(event.target.error);
                     };
 
                     imageRequest.onerror = (event) => reject(event.target.error);
                 } else {
-                    resolve(); // No image, just resolve
+                    resolve();
                 }
             };
 
@@ -169,152 +142,112 @@ const insertDataWithImage = async (storeName, record, imageBlob) => {
 
 
 const full_sync = async () => {
-  await sync_client_with_server();  // 1. Push local to Supabase
-  await sync_server();              // 2. Pull latest from Supabase
+    await sync_client_with_server();
+    await sync_server();
 };
-
-
 
 
 const sync_client_with_server = async () => {
     if (!db) {
-      console.error('Database is not open. Attempting to open it...');
-      const request = indexedDB.open(dbName, 1);
-      request.onsuccess = (event) => {
-        db = event.target.result;
-        console.log('Database opened successfully.');
-        sync_client_with_server(); // Retry sync after opening DB
-      };
-      request.onerror = (event) => console.error('Failed to open database:', event);
-      return;
+        console.error('Database is not open. Attempting to open it...');
+        const request = indexedDB.open(dbName, 1);
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            sync_client_with_server();
+        };
+        request.onerror = (event) => console.error('Failed to open database:', event);
+        return;
     }
-  
-    // 1. Get data rows from the tables to sync
+
     const tables = ['Customer', 'Inspection_Header', 'Inspection_Details'];
     const dataToSync = {};
-  
+
     for (const table of tables) {
-      const tableData = await getDataFromIndexedDB(table);
-      dataToSync[table] = tableData;
+        const tableData = await getDataFromIndexedDB(table);
+        dataToSync[table] = tableData;
     }
-  
-    // 2. Handle image synchronization:
-    //    Check the Images store for records whose image_url is still a local reference (e.g. a number).
+
     const imageData = await getDataFromIndexedDB('Images');
-    console.log(imageData);
     const imageUploadPromises = [];
-  
-    // Loop through each table to check image_url
+
     for (const table in dataToSync) {
-      const tableData = dataToSync[table];
-      if (tableData && tableData.length > 0) {
-        for (let row of tableData) {
-          if (row.image_url && (typeof row.image_url === 'number' || !isNaN(row.image_url))) {
-            console.log('Found image_url as number or placeholder in table:', table, 'Row ID:', row.id);
-  
-            // Find corresponding image in the Images store by image_id
-            const imageRecord = imageData.find(img => img.image_id === row.image_url);
-            console.log(imageRecord);
-  
-            if (imageRecord) {
-              try {
-                // Upload the image blob to Supabase Storage
-                const imageUrl = await uploadImageToSupabase(imageRecord.blob, imageRecord.image_id);
-                
-                if (imageUrl) {
-                  // Log that the image was successfully saved and the file name
-                  console.log(`Photo saved successfully: ${imageRecord.image_id}. URL: ${imageUrl}`);
-  
-                  // Update the image_url in the data row with the Supabase URL
-                  row.image_url = imageUrl;
-                  
-                  const parts = imageUrl.split('/');
-                  const new_image_id = parts[parts.length - 1];
+        const tableData = dataToSync[table];
+        if (tableData && tableData.length > 0) {
+            for (let row of tableData) {
+                if (row.image_url && (typeof row.image_url === 'number' || !isNaN(row.image_url))) {
+                    const imageRecord = imageData.find(img => img.image_id === row.image_url);
 
-                  
-                  
-                  
+                    if (imageRecord) {
+                        try {
+                            const imageUrl = await uploadImageToSupabase(imageRecord.blob, imageRecord.image_id);
 
-  
-                  // Remove the blob from the image record
-                  //delete imageRecord.blob;
-  
-                  // Push a promise to update the image record in IndexedDB
-                  imageUploadPromises.push(updateImageRecord(imageRecord, new_image_id, imageUrl));
+                            if (imageUrl) {
+                                row.image_url = imageUrl;
+                                const parts = imageUrl.split('/');
+                                const new_image_id = parts[parts.length - 1];
+                                imageUploadPromises.push(updateImageRecord(imageRecord, new_image_id, imageUrl));
+                            }
+                        } catch (error) {
+                            console.error(`Failed to upload image (ID: ${imageRecord.image_id}):`, error);
+                        }
+                    } else {
+                        console.error(`Image record for image_id ${row.image_url} not found in Images store.`);
+                    }
                 }
-              } catch (error) {
-                console.error(`Failed to upload image (ID: ${imageRecord.image_id}):`, error);
-              }
-            } else {
-              console.error(`Image record for image_id ${row.image_url} not found in Images store.`);
             }
-          }
         }
-      }
-  
-      // Sync the data with Supabase
-      await syncDataToServer(table, tableData);
-    }
-  
-    // Wait for all image updates to finish
-    await Promise.all(imageUploadPromises);
-    console.log('Images synced to Supabase successfully.');
-  
-    console.log('Data synced to Supabase successfully.');
-  };
-  
-  // Helper: Update an image record in the "Images" store in IndexedDB.
-  const updateImageRecord = (imageRecord, image_id, image_url) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction('Images', 'readwrite');
-      const store = transaction.objectStore('Images');
-      imageRecord.image_id = image_id
-      imageRecord.image_url = image_url
-      const request = store.put(imageRecord);
-  
-      request.onsuccess = () => resolve();
-      request.onerror = (event) => reject(`Error updating image record: ${event.target.error}`);
-    });
-  };
 
-  const updateRowInIndexedDB = (table, row) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(table, 'readwrite');
-      const store = transaction.objectStore(table);
-      const request = store.put(row);
-  
-      request.onsuccess = () => resolve();
-      request.onerror = (event) => reject(`Error updating row in ${table}: ${event.target.error}`);
-    });
-  };
-  
-  
-  // Helper: Sync data to Supabase using an upsert
-  const syncDataToServer = async (table, data) => {
-    try {
-      const { error } = await _supabase.from(table).upsert(data);
-      if (error) {
-        console.error(`Error syncing data for table ${table}:`, error);
-      } else {
-        console.log(`${table} data synced successfully.`);
-      }
-    } catch (err) {
-      console.error(`Failed to sync ${table} data:`, err);
+        await syncDataToServer(table, tableData);
     }
-  };
-  
-  
+
+    await Promise.all(imageUploadPromises);
+};
+
+const updateImageRecord = (imageRecord, image_id, image_url) => {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction('Images', 'readwrite');
+        const store = transaction.objectStore('Images');
+        imageRecord.image_id = image_id;
+        imageRecord.image_url = image_url;
+        const request = store.put(imageRecord);
+
+        request.onsuccess = () => resolve();
+        request.onerror = (event) => reject(`Error updating image record: ${event.target.error}`);
+    });
+};
+
+const updateRowInIndexedDB = (table, row) => {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(table, 'readwrite');
+        const store = transaction.objectStore(table);
+        const request = store.put(row);
+
+        request.onsuccess = () => resolve();
+        request.onerror = (event) => reject(`Error updating row in ${table}: ${event.target.error}`);
+    });
+};
+
+
+const syncDataToServer = async (table, data) => {
+    try {
+        const { error } = await _supabase.from(table).upsert(data);
+        if (error) {
+            console.error(`Error syncing data for table ${table}:`, error);
+        }
+    } catch (err) {
+        console.error(`Failed to sync ${table} data:`, err);
+    }
+};
 
 
 const sync_server = async () => {
     if (!db) return console.error('Database is not open.');
 
     const tables = ['Customer', 'Inspection_Header', 'Inspection_Details'];
-    const imageUploadPromises = [];  // Ensure this array is initialized to track image uploads
+    const imageUploadPromises = [];
 
     for (const table of tables) {
         try {
-            // Fetch data from Supabase
             let { data, error } = await _supabase.from(table).select('*');
 
             if (error) {
@@ -328,20 +261,19 @@ const sync_server = async () => {
                 const imageStore = transaction.objectStore('Images');
 
                 for (let record of data) {
-                    store.put(record); // Store record in IndexedDB
+                    store.put(record);
 
-                    // Check if image_url exists and is a Supabase link
                     if (record.image_url && record.image_url.startsWith(SUPABASE_URL)) {
                         const imageId = record.image_url.split('/').pop();
 
-                        // Check if the image is already cached
                         const imageRequest = imageStore.get(imageId);
                         imageRequest.onsuccess = async (event) => {
                             if (!event.target.result) {
                                 try {
-                                    // If not cached, download the image and store it
                                     const encodedImageId = encodeURIComponent(imageId);
-                                    const { data: imageBlob, error: imgError } = await _supabase.storage.from('images').download(encodedImageId);
+                                    const { data: imageBlob, error: imgError } = await _supabase.storage
+                                        .from('images')
+                                        .download(encodedImageId);
 
                                     if (!imgError && imageBlob) {
                                         const reader = new FileReader();
@@ -349,13 +281,9 @@ const sync_server = async () => {
 
                                         reader.onloadend = () => {
                                             const imageBuffer = new Blob([reader.result], { type: 'image/jpeg' });
-
-                                            // Open a new transaction to store the image
                                             const imageTransaction = db.transaction('Images', 'readwrite');
                                             const newImageStore = imageTransaction.objectStore('Images');
                                             newImageStore.put({ image_id: imageId, blob: imageBuffer, image_url: record.image_url });
-
-                                            
                                         };
                                     } else {
                                         console.error(`Error downloading image ${imageId}:`, imgError);
@@ -367,96 +295,75 @@ const sync_server = async () => {
                         };
                     }
                 }
-                console.log(`${table} synced from server.`);
             }
         } catch (err) {
             console.error(`Sync error for ${table}:`, err);
         }
     }
 
-    // Ensure the image caching is completed before proceeding
     await Promise.all(imageUploadPromises);
-
-    console.log('Server sync complete, images uploaded successfully.');
-
-    // After everything is complete, trigger client sync
-    // Call sync_client_with_server when everything is done
 };
-
-
 
 
 const deleteRecord = async (storeName, key) => {
-  if (!db) {
-      console.error('Database is not open.');
-      return Promise.reject('Database is not open.');
-  }
+    if (!db) {
+        console.error('Database is not open.');
+        return Promise.reject('Database is not open.');
+    }
 
-  try {
-      const primaryKeyField = getPrimaryKeyField(storeName);
+    try {
+        const primaryKeyField = getPrimaryKeyField(storeName);
 
-      // Check if record exists in Supabase
-      const { data, error: fetchError } = await _supabase
-          .from(storeName)
-          .select(primaryKeyField)
-          .eq(primaryKeyField, key)
-          .single();
+        const { data, error: fetchError } = await _supabase
+            .from(storeName)
+            .select(primaryKeyField)
+            .eq(primaryKeyField, key)
+            .single();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {  // Ignore "no rows found" error
-          console.error(`Error checking for record in Supabase (${storeName}):`, fetchError);
-          throw new Error(`Failed to check for record in Supabase: ${fetchError.message}`);
-      }
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error(`Error checking for record in Supabase (${storeName}):`, fetchError);
+            throw new Error(`Failed to check for record in Supabase: ${fetchError.message}`);
+        }
 
-      if (data) {
-          // Record exists in Supabase, so delete it there first
-          const { error: deleteError } = await _supabase
-              .from(storeName)
-              .delete()
-              .eq(primaryKeyField, key);
+        if (data) {
+            const { error: deleteError } = await _supabase
+                .from(storeName)
+                .delete()
+                .eq(primaryKeyField, key);
 
-          if (deleteError) {
-              console.error(`Error deleting record from Supabase (${storeName}):`, deleteError);
-              throw new Error(`Failed to delete record from Supabase: ${deleteError.message}`);
-          }
+            if (deleteError) {
+                console.error(`Error deleting record from Supabase (${storeName}):`, deleteError);
+                throw new Error(`Failed to delete record from Supabase: ${deleteError.message}`);
+            }
+        }
 
-          console.log(`Record with key ${key} deleted from Supabase (${storeName})`);
-      } else {
-          console.log(`No record found in Supabase for key ${key} (${storeName}). Skipping Supabase delete.`);
-      }
+        await deleteRecordFromIndexedDB(storeName, key);
 
-      // Always delete from IndexedDB
-      await deleteRecordFromIndexedDB(storeName, key);
-      console.log(`Record with key ${key} deleted from IndexedDB (${storeName})`);
-
-  } catch (error) {
-      console.error(`Failed to delete record ${key} from ${storeName}:`, error);
-      throw error;  // In case you want to handle this upstream (like showing an error message)
-  }
+    } catch (error) {
+        console.error(`Failed to delete record ${key} from ${storeName}:`, error);
+        throw error;
+    }
 };
 
 const getPrimaryKeyField = (storeName) => {
-  const primaryKeys = {
-      'Customer': 'customer_id',
-      'Inspection_Header': 'inspection_id',
-      'Inspection_Details': 'detail_id'
-  };
-  return primaryKeys[storeName] || 'id';  // Fallback in case of unknown store
+    const primaryKeys = {
+        'Customer': 'customer_id',
+        'Inspection_Header': 'inspection_id',
+        'Inspection_Details': 'detail_id'
+    };
+    return primaryKeys[storeName] || 'id';
 };
 
 const deleteRecordFromIndexedDB = (storeName, key) => {
-  return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.delete(key);
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(key);
 
-      request.onsuccess = () => resolve();
-      request.onerror = (event) => reject(`Error deleting from IndexedDB: ${event.target.error}`);
-  });
+        request.onsuccess = () => resolve();
+        request.onerror = (event) => reject(`Error deleting from IndexedDB: ${event.target.error}`);
+    });
 };
-
-
-
-
 
 
 openDB();

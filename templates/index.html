@@ -30,9 +30,10 @@
     </div>
 </section>
 
-<!-- Sync Button -->
-<button id="sync-button" title="Sync Now" class="absolute top-3 right-10 w-11 h-11 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 transition duration-300 z-50 flex items-center justify-center">
-    <i class="fas fa-sync-alt text-l"></i> <!-- Font Awesome sync icon -->
+<!-- Sync Status Indicator (tap to manually sync) -->
+<button id="sync-status" title="Tap to sync" class="absolute top-3 right-4 flex items-center space-x-1 text-xs text-gray-500 cursor-pointer hover:text-blue-600 focus:outline-none active:scale-95 transition-transform">
+    <i id="sync-icon" class="fas fa-sync-alt"></i>
+    <span id="sync-label">Offline</span>
 </button>
 
 
@@ -58,50 +59,77 @@
 
     document.getElementById('print').addEventListener('click', async () => {
         const spinner = document.getElementById('fullscreen-spinner');
-        spinner.classList.remove('hidden');  // Show spinner
+        spinner.classList.remove('hidden');
     });
 
-    // Sync Button Functionality
-    document.getElementById('sync-button').addEventListener('click', async () => {
-        const spinner = document.getElementById('fullscreen-spinner');
-        spinner.classList.remove('hidden');  // Show spinner
+    // --- Auto-sync ---
+    let isSyncing = false;
+    const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
+    function setSyncStatus(status) {
+        const icon = document.getElementById('sync-icon');
+        const label = document.getElementById('sync-label');
+        if (status === 'syncing') {
+            icon.classList.add('animate-spin', 'text-blue-500');
+            icon.classList.remove('text-green-500', 'text-red-500', 'text-gray-400');
+            label.textContent = 'Syncing...';
+        } else if (status === 'synced') {
+            icon.classList.remove('animate-spin', 'text-blue-500', 'text-red-500', 'text-gray-400');
+            icon.classList.add('text-green-500');
+            label.textContent = 'Synced ' + new Date().toLocaleTimeString();
+        } else if (status === 'error') {
+            icon.classList.remove('animate-spin', 'text-blue-500', 'text-green-500', 'text-gray-400');
+            icon.classList.add('text-red-500');
+            label.textContent = 'Sync failed';
+        } else {
+            icon.classList.remove('animate-spin', 'text-blue-500', 'text-green-500', 'text-red-500');
+            icon.classList.add('text-gray-400');
+            label.textContent = 'Offline';
+        }
+    }
+
+    async function autoSync() {
+        if (isSyncing || !navigator.onLine) return;
+        isSyncing = true;
+        setSyncStatus('syncing');
         try {
             await full_sync();
-            alert('Sync completed successfully.');
-        } catch (error) {
-            console.error('Error during sync:', error);
-            alert('Failed to sync. Please try again.');
+            setSyncStatus('synced');
+        } catch (err) {
+            console.error('Auto-sync failed:', err);
+            setSyncStatus('error');
         } finally {
-            spinner.classList.add('hidden');  // Hide spinner
+            isSyncing = false;
         }
+    }
+
+    // Sync on load
+    if (navigator.onLine) {
+        autoSync();
+    } else {
+        setSyncStatus('offline');
+    }
+
+    // Sync when coming back online
+    window.addEventListener('online', () => autoSync());
+    window.addEventListener('offline', () => setSyncStatus('offline'));
+
+    // Sync every 5 minutes while online
+    setInterval(() => { if (navigator.onLine) autoSync(); }, SYNC_INTERVAL_MS);
+
+    // Manual sync on tap
+    document.getElementById('sync-status').addEventListener('click', () => {
+        if (!navigator.onLine) return;
+        autoSync();
     });
 
-
-
-    function isOnline() {
-        return navigator.onLine;
+    // Update print button availability
+    function updatePrintStatus() {
+        document.getElementById('print').classList.toggle('disabled', !navigator.onLine);
     }
-    
-    function updateStatus() {
-        let online = isOnline();
-        const printElement = document.getElementById('print');
-        
-        if (!online) {
-            // Make the element dull and unclickable when offline
-            printElement.classList.add('disabled');
-        } else {
-            // Remove the dull and unclickable effect when online
-            printElement.classList.remove('disabled');
-        }
-    }
-    
-    // Initial status check
-    updateStatus();
-    
-    // Listen for online/offline events to dynamically update the status
-    window.addEventListener('online', updateStatus);
-    window.addEventListener('offline', updateStatus);
+    updatePrintStatus();
+    window.addEventListener('online', updatePrintStatus);
+    window.addEventListener('offline', updatePrintStatus);
     
 
 </script>
@@ -120,16 +148,6 @@
         display: none;
     }
 
-    /* Darker Spinner Ring */
-    .spinner-ring {
-        width: 80px;
-        height: 80px;
-        border: 8px solid rgba(255, 255, 255, 0.3);
-        border-top: 8px solid #007bff; /* Darker blue for the spinner */
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
     /* Full-screen Spinner Centered */
     #fullscreen-spinner {
         position: fixed;
@@ -137,20 +155,6 @@
         left: 50%;
         transform: translate(-50%, -50%);
         z-index: 2000;
-    }
-
-    /* Spinner Animation */
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    .hidden {
-        display: none;
     }
 </style>
 
