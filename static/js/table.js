@@ -121,10 +121,12 @@ const createTable = (records, columns, containerId, onRowClick = null) => {
     columns.forEach(col => {
         const th = document.createElement('th');
         th.textContent = _colLabel(col);
+        if (col === 'image_url') th.style.width = '64px';
         headerRow.appendChild(th);
     });
     const actionTh = document.createElement('th');
     actionTh.textContent = 'Actions';
+    actionTh.style.width = '80px';
     headerRow.appendChild(actionTh);
     thead.appendChild(headerRow);
     table.appendChild(thead);
