@@ -122,6 +122,7 @@ const createTable = (records, columns, containerId, onRowClick = null) => {
         const th = document.createElement('th');
         th.textContent = _colLabel(col);
         if (col === 'image_url') th.style.width = '64px';
+        if (col === 'title' || col === 'name') th.style.width = '28%';
         headerRow.appendChild(th);
     });
     const actionTh = document.createElement('th');
