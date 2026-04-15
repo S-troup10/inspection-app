@@ -142,10 +142,58 @@ html, body {
 }
 
 @media (max-width: 640px) {
-    .styled-table th,
+    .styled-table thead {
+        display: none;
+    }
+
+    .styled-table,
+    .styled-table tbody,
+    .styled-table tr,
     .styled-table td {
-        padding: 10px 12px;
-        font-size: 13px;
+        display: block;
+        width: 100%;
+    }
+
+    .styled-table tr {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        padding: 8px 0;
+        background: #fff;
+    }
+
+    .styled-table tr:hover td {
+        background-color: transparent;
+    }
+
+    .styled-table td {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+        text-align: right;
+    }
+
+    .styled-table td:last-child {
+        border-bottom: none;
+    }
+
+    .styled-table td::before {
+        content: attr(data-label);
+        flex: 1;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        white-space: nowrap;
+    }
+
+    .styled-table img {
+        margin-left: auto;
     }
 }
 

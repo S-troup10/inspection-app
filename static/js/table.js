@@ -105,6 +105,7 @@ const createTable = (records, columns, containerId) => {
         const row = document.createElement('tr');
         columns.forEach((col) => {
             const cell = document.createElement('td');
+            cell.setAttribute('data-label', col.charAt(0).toUpperCase() + col.slice(1));
 
             if (col === "image_url" && record.image_url) {  
                 const img = document.createElement('img');
@@ -150,6 +151,7 @@ const createTable = (records, columns, containerId) => {
         });
 
         const editCell = document.createElement('td');
+        editCell.setAttribute('data-label', 'Actions');
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
         editButton.classList.add('edit-btn');
