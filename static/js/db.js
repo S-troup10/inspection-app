@@ -244,7 +244,7 @@ const sync_server = async () => {
     if (!db) return console.error('Database is not open.');
 
     const tables = ['Customer', 'Inspection_Header', 'Inspection_Details'];
-    const imageUploadPromises = [];
+    const imageDownloadPromises = [];
 
     for (const table of tables) {
         try {
@@ -266,33 +266,44 @@ const sync_server = async () => {
                     if (record.image_url && record.image_url.startsWith(SUPABASE_URL)) {
                         const imageId = record.image_url.split('/').pop();
 
-                        const imageRequest = imageStore.get(imageId);
-                        imageRequest.onsuccess = async (event) => {
-                            if (!event.target.result) {
-                                try {
-                                    const encodedImageId = encodeURIComponent(imageId);
-                                    const { data: imageBlob, error: imgError } = await _supabase.storage
-                                        .from('images')
-                                        .download(encodedImageId);
+                        const imagePromise = new Promise((resolve) => {
+                            const imageRequest = imageStore.get(imageId);
+                            imageRequest.onerror = () => resolve();
+                            imageRequest.onsuccess = async (event) => {
+                                if (!event.target.result) {
+                                    try {
+                                        const encodedImageId = encodeURIComponent(imageId);
+                                        const { data: imageBlob, error: imgError } = await _supabase.storage
+                                            .from('images')
+                                            .download(encodedImageId);
 
-                                    if (!imgError && imageBlob) {
-                                        const reader = new FileReader();
-                                        reader.readAsArrayBuffer(imageBlob);
-
-                                        reader.onloadend = () => {
-                                            const imageBuffer = new Blob([reader.result], { type: 'image/jpeg' });
-                                            const imageTransaction = db.transaction('Images', 'readwrite');
-                                            const newImageStore = imageTransaction.objectStore('Images');
-                                            newImageStore.put({ image_id: imageId, blob: imageBuffer, image_url: record.image_url });
-                                        };
-                                    } else {
-                                        console.error(`Error downloading image ${imageId}:`, imgError);
+                                        if (!imgError && imageBlob) {
+                                            const reader = new FileReader();
+                                            reader.readAsArrayBuffer(imageBlob);
+                                            reader.onloadend = () => {
+                                                const imageBuffer = new Blob([reader.result], { type: 'image/jpeg' });
+                                                const imageTransaction = db.transaction('Images', 'readwrite');
+                                                const newImageStore = imageTransaction.objectStore('Images');
+                                                const putReq = newImageStore.put({ image_id: imageId, blob: imageBuffer, image_url: record.image_url });
+                                                putReq.onsuccess = () => resolve();
+                                                putReq.onerror = () => resolve();
+                                            };
+                                            reader.onerror = () => resolve();
+                                        } else {
+                                            console.error(`Error downloading image ${imageId}:`, imgError);
+                                            resolve();
+                                        }
+                                    } catch (fetchError) {
+                                        console.error(`Failed to cache image ${imageId}:`, fetchError);
+                                        resolve();
                                     }
-                                } catch (fetchError) {
-                                    console.error(`Failed to cache image ${imageId}:`, fetchError);
+                                } else {
+                                    resolve();
                                 }
-                            }
-                        };
+                            };
+                        });
+
+                        imageDownloadPromises.push(imagePromise);
                     }
                 }
             }
@@ -301,7 +312,7 @@ const sync_server = async () => {
         }
     }
 
-    await Promise.all(imageUploadPromises);
+    await Promise.all(imageDownloadPromises);
 };
 
 

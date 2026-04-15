@@ -1,45 +1,82 @@
 {% extends 'base.html' %}
 
-{% block title %}Choose an Action{% endblock %}
+{% block title %}HV Engineers | Dashboard{% endblock %}
 
 {% block content %}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.0/sql-wasm.js"></script>
 
-<section class=" min-h-90 flex flex-col items-center justify-center py-8 px-4 space-y-6">
-    <h2 class="text-3xl font-semibold text-center text-gray-800 mb-8">Actions Available</h2>
-    
-    <div class="bg-[#f9f9f7] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-4xl">
-        <!-- Customer Details Button -->
-        <a href="/customer" class="flex flex-col items-center justify-center bg-blue-600 text-white p-8 rounded-lg shadow-lg hover:bg-blue-700 active:bg-blue-800 transition duration-300 text-center">
-            <i class="fas fa-user-tie text-4xl mb-4"></i> <!-- Font Awesome icon -->
-            <span class="text-lg font-medium">Customer Details</span>
-        </a>
+<div class="flex flex-col min-h-[calc(100vh-56px)] px-4 py-8">
 
-        <!-- Inspections Button -->
-        <a href="/inspections" class="flex flex-col items-center justify-center bg-green-600 text-white p-8 rounded-lg shadow-lg hover:bg-green-700 active:bg-green-800 transition duration-300 text-center">
-            <i class="fas fa-clipboard-list text-4xl mb-4"></i> <!-- Font Awesome icon -->
-            <span class="text-lg font-medium">Inspections</span>
-        </a>
-
-        <!-- Print Reports Button -->
-        <a href="/select-Inspections" id="print" class="flex flex-col items-center justify-center bg-purple-600 text-white p-8 rounded-lg shadow-lg hover:bg-purple-700 active:bg-purple-800 transition duration-300 text-center">
-            <i class="fas fa-print text-4xl mb-4"></i> <!-- Font Awesome icon -->
-            <span class="text-lg font-medium">Print Reports</span>
-        </a>
+    <!-- Sync button -->
+    <div class="flex justify-end mb-6">
+        <button id="sync-status" title="Tap to sync"
+            class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-500 shadow-sm hover:border-blue-300 hover:text-blue-600 active:scale-95 transition-all focus:outline-none">
+            <i id="sync-icon" class="fas fa-sync-alt text-xs"></i>
+            <span id="sync-label">Tap to sync</span>
+        </button>
     </div>
-</section>
 
-<!-- Sync Status Indicator (tap to manually sync) -->
-<button id="sync-status" title="Tap to sync" class="absolute top-3 right-4 flex items-center space-x-1 text-xs text-gray-500 cursor-pointer hover:text-blue-600 focus:outline-none active:scale-95 transition-transform">
-    <i id="sync-icon" class="fas fa-sync-alt"></i>
-    <span id="sync-label">Offline</span>
-</button>
+    <!-- Branding -->
+    <div class="text-center mb-10">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-lg mb-4">
+            <i class="fas fa-bolt text-white text-2xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">HV Engineers</h2>
+        <p class="text-slate-500 text-sm mt-1">Inspection Management</p>
+    </div>
 
+    <!-- Action cards -->
+    <div class="grid grid-cols-1 gap-4 max-w-sm mx-auto w-full sm:max-w-lg sm:grid-cols-3 sm:gap-5">
 
-<!-- Full-screen Spinner -->
-<div id="fullscreen-spinner" class="hidden fixed top-0 left-0 w-full h-full bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-    <div class="w-20 h-20 border-8 border-t-8 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+        <!-- Customer Details -->
+        <a href="/customer"
+            class="flex flex-row sm:flex-col items-center gap-4 sm:gap-3 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-blue-100 active:scale-98 transition-all group">
+            <div class="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 bg-blue-50 group-hover:bg-blue-100 rounded-xl flex items-center justify-center transition-colors">
+                <i class="fas fa-user-tie text-blue-600 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="sm:text-center">
+                <p class="text-sm font-bold text-slate-800">Customers</p>
+                <p class="text-xs text-slate-400 mt-0.5">View & manage</p>
+            </div>
+            <i class="fas fa-chevron-right text-slate-300 text-xs ml-auto sm:hidden"></i>
+        </a>
+
+        <!-- Inspections -->
+        <a href="/inspections"
+            class="flex flex-row sm:flex-col items-center gap-4 sm:gap-3 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-green-100 active:scale-98 transition-all group">
+            <div class="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 bg-green-50 group-hover:bg-green-100 rounded-xl flex items-center justify-center transition-colors">
+                <i class="fas fa-clipboard-list text-green-600 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="sm:text-center">
+                <p class="text-sm font-bold text-slate-800">Inspections</p>
+                <p class="text-xs text-slate-400 mt-0.5">View & manage</p>
+            </div>
+            <i class="fas fa-chevron-right text-slate-300 text-xs ml-auto sm:hidden"></i>
+        </a>
+
+        <!-- Print Reports -->
+        <a href="/select-Inspections" id="print"
+            class="flex flex-row sm:flex-col items-center gap-4 sm:gap-3 bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-purple-100 active:scale-98 transition-all group">
+            <div class="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 bg-purple-50 group-hover:bg-purple-100 rounded-xl flex items-center justify-center transition-colors">
+                <i class="fas fa-file-pdf text-purple-600 text-xl sm:text-2xl"></i>
+            </div>
+            <div class="sm:text-center">
+                <p class="text-sm font-bold text-slate-800">Print Reports</p>
+                <p class="text-xs text-slate-400 mt-0.5">Generate PDF</p>
+            </div>
+            <i class="fas fa-chevron-right text-slate-300 text-xs ml-auto sm:hidden"></i>
+        </a>
+
+    </div>
+</div>
+
+<!-- Full-screen loading overlay -->
+<div id="fullscreen-spinner" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-2xl">
+        <div class="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <p class="text-sm font-medium text-slate-600">Loading...</p>
+    </div>
 </div>
 
 <script src="/static/js/db.js"></script>
@@ -49,113 +86,63 @@
     if ('serviceWorker' in navigator && navigator.onLine) {
         navigator.serviceWorker
             .register('/static/js/service-worker.js', { scope: '/' })
-            .then(() => {
-                console.log("Service Worker Registered");
-            })
-            .catch((error) => {
-                console.error("Service Worker Registration Failed:", error);
-            });
+            .then(() => console.log("Service Worker Registered"))
+            .catch((error) => console.error("Service Worker Registration Failed:", error));
     }
 
-    document.getElementById('print').addEventListener('click', async () => {
-        const spinner = document.getElementById('fullscreen-spinner');
-        spinner.classList.remove('hidden');
+    document.getElementById('print').addEventListener('click', () => {
+        document.getElementById('fullscreen-spinner').classList.remove('hidden');
     });
 
-    // --- Auto-sync ---
+    // --- Manual sync ---
     let isSyncing = false;
-    const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
     function setSyncStatus(status) {
         const icon = document.getElementById('sync-icon');
         const label = document.getElementById('sync-label');
+        const btn = document.getElementById('sync-status');
         if (status === 'syncing') {
             icon.classList.add('animate-spin', 'text-blue-500');
-            icon.classList.remove('text-green-500', 'text-red-500', 'text-gray-400');
+            icon.classList.remove('text-green-500', 'text-red-500', 'text-slate-400');
             label.textContent = 'Syncing...';
         } else if (status === 'synced') {
-            icon.classList.remove('animate-spin', 'text-blue-500', 'text-red-500', 'text-gray-400');
+            icon.classList.remove('animate-spin', 'text-blue-500', 'text-red-500', 'text-slate-400');
             icon.classList.add('text-green-500');
-            label.textContent = 'Synced ' + new Date().toLocaleTimeString();
+            label.textContent = 'Synced ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
         } else if (status === 'error') {
-            icon.classList.remove('animate-spin', 'text-blue-500', 'text-green-500', 'text-gray-400');
+            icon.classList.remove('animate-spin', 'text-blue-500', 'text-green-500', 'text-slate-400');
             icon.classList.add('text-red-500');
             label.textContent = 'Sync failed';
         } else {
             icon.classList.remove('animate-spin', 'text-blue-500', 'text-green-500', 'text-red-500');
-            icon.classList.add('text-gray-400');
-            label.textContent = 'Offline';
+            icon.classList.add('text-slate-400');
+            label.textContent = 'Tap to sync';
         }
     }
 
-    async function autoSync() {
-        if (isSyncing || !navigator.onLine) return;
+    setSyncStatus('idle');
+
+    document.getElementById('sync-status').addEventListener('click', async () => {
+        if (isSyncing) return;
         isSyncing = true;
         setSyncStatus('syncing');
         try {
             await full_sync();
             setSyncStatus('synced');
         } catch (err) {
-            console.error('Auto-sync failed:', err);
+            console.error('Sync failed:', err);
             setSyncStatus('error');
         } finally {
             isSyncing = false;
         }
-    }
-
-    // Sync on load
-    if (navigator.onLine) {
-        autoSync();
-    } else {
-        setSyncStatus('offline');
-    }
-
-    // Sync when coming back online
-    window.addEventListener('online', () => autoSync());
-    window.addEventListener('offline', () => setSyncStatus('offline'));
-
-    // Sync every 5 minutes while online
-    setInterval(() => { if (navigator.onLine) autoSync(); }, SYNC_INTERVAL_MS);
-
-    // Manual sync on tap
-    document.getElementById('sync-status').addEventListener('click', () => {
-        if (!navigator.onLine) return;
-        autoSync();
     });
 
-    // Update print button availability
     function updatePrintStatus() {
         document.getElementById('print').classList.toggle('disabled', !navigator.onLine);
     }
     updatePrintStatus();
     window.addEventListener('online', updatePrintStatus);
     window.addEventListener('offline', updatePrintStatus);
-    
-
 </script>
-
-
-
-
-<style>
-
-    .disabled {
-        opacity: 0.35; /* Makes the element look dull */
-        pointer-events: none; /* Prevents clicks and other interactions */
-    }
-    
-    .hidden {
-        display: none;
-    }
-
-    /* Full-screen Spinner Centered */
-    #fullscreen-spinner {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 2000;
-    }
-</style>
 
 {% endblock %}

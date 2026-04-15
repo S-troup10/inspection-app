@@ -1,48 +1,33 @@
 {% extends 'base.html' %}
 
-{% block title %}View Inspection{% endblock %}
+{% block title %}Inspections{% endblock %}
 
 {% block content %}
-<section class="inspection-section">
-    <h2 class="section-title">Inspections List</h2>
-
-    <!-- Add Inspection Button -->
-    <div class="add-inspection-container">
-        <a href="/inspection-Add" class="add-btn">Add Inspection</a>
+<div class="inspection-section">
+    <div class="list-toolbar">
+        <h2 class="section-title">Inspections</h2>
+        <a href="/inspection-Add" class="add-btn">
+            <i class="fas fa-plus text-xs"></i> Add
+        </a>
     </div>
+    <div class="inspection-list" id="table"></div>
+</div>
 
-    <div class="inspection-list" id='table'>
-        
-    </div>
-    <script src="/static/js/table.js"></script>
+<script src="/static/js/table.js"></script>
 <script>
-    // Wait for DOM to load and then call generateTable
     document.addEventListener('DOMContentLoaded', () => {
-        // Call the function, specifying which columns to include
         generateTable('HV-storage', 'Inspection_Header', 'table', ['title', 'date', 'description', 'image_url', 'inspection_id']);
     });
 
-    // Add event listener for row clicks
     document.getElementById('table').addEventListener('click', function(event) {
         const row = event.target.closest('tr');
-        // Make sure the click isn't coming from the edit button
         if (row && !event.target.closest('button.edit-btn')) {
-            // Find the inspection_id field within the second-to-last column
-            const inspectionId = row.querySelectorAll('td')[row.cells.length - 2].textContent; 
+            const inspectionId = row.querySelectorAll('td')[row.cells.length - 2].textContent;
             if (inspectionId) {
-                redirectToPrintReports(inspectionId);
+                localStorage.setItem('current_inspection_id', inspectionId);
+                window.location.href = '/inspection-Details';
             }
         }
     });
-
-    function redirectToPrintReports(inspectionId) {
-        // Store the inspectionId in local storage
-        localStorage.setItem('current_inspection_id', inspectionId);
-        
-        // Redirect to the inspection details page without query parameters
-        window.location.href = '/inspection-Details';
-    }
-    
 </script>
-</section>
 {% endblock %}
