@@ -1,165 +1,166 @@
-// Function to render an image from IndexedDB
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const _colLabel = (col) =>
+    col.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const _loadImage = (imageId, imgElement) => {
+    let id = imageId;
+    if (typeof id === 'string' && id.startsWith('https://')) {
+        try { id = new URL(id).pathname.split('/').pop(); } catch (e) { return; }
+    }
+    if (!isNaN(id) && id !== '') id = parseInt(id);
+    renderImage('Images', id, imgElement).catch(() => { imgElement.alt = 'No image'; });
+};
+
+// ─── Image loader from IndexedDB ─────────────────────────────────────────────
+
 const renderImage = (storeName, imageId, imgElement) => {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('HV-storage');
-
         request.onsuccess = (event) => {
             const db = event.target.result;
-            const transaction = db.transaction(storeName, 'readonly');
-            const store = transaction.objectStore(storeName);
-
+            const store = db.transaction(storeName, 'readonly').objectStore(storeName);
             let lookupId = imageId;
-
-            // If it's a Supabase URL, extract the filename
-            if (typeof imageId === "string" && imageId.startsWith("https://")) {
-                try {
-                    const url = new URL(imageId);
-                    lookupId = url.pathname.split("/").pop(); // Extract filename
-                } catch (error) {
-                    console.error("Invalid URL format:", imageId);
-                    return reject("Invalid Supabase URL.");
-                }
-            } 
-
-            // Convert to number only if it's numeric
-            if (!isNaN(lookupId) && lookupId !== "") {
-                lookupId = Number(lookupId);
+            if (typeof lookupId === 'string' && lookupId.startsWith('https://')) {
+                try { lookupId = new URL(lookupId).pathname.split('/').pop(); }
+                catch (e) { return reject('Invalid URL'); }
             }
-
-            const getRequest = store.get(lookupId);
-
-            getRequest.onsuccess = (event) => {
-                const record = event.target.result;
+            if (!isNaN(lookupId) && lookupId !== '') lookupId = Number(lookupId);
+            const req = store.get(lookupId);
+            req.onsuccess = (e) => {
+                const record = e.target.result;
                 if (record && record.blob) {
-                    const blob = new Blob([record.blob], { type: 'image/jpeg' });
-                    const imageUrl = URL.createObjectURL(blob);
-                    imgElement.src = imageUrl;
-                    resolve(imageUrl);
+                    const url = URL.createObjectURL(new Blob([record.blob], { type: 'image/jpeg' }));
+                    imgElement.src = url;
+                    resolve(url);
                 } else {
-                    reject(`No image found for image_id: ${lookupId}`);
+                    reject(`No image for: ${lookupId}`);
                 }
             };
-
-            getRequest.onerror = () => reject('Error fetching image from IndexedDB.');
+            req.onerror = () => reject('IndexedDB read error');
         };
-
-        request.onerror = () => reject('Error opening IndexedDB.');
+        request.onerror = () => reject('IndexedDB open error');
     });
 };
 
-// Function to generate a table
-const generateTable = async (dbName, storeName, containerId, columns = [], query = null) => {
-    const request = indexedDB.open(dbName);
+// ─── Main entry point ─────────────────────────────────────────────────────────
 
+const generateTable = (dbName, storeName, containerId, columns = [], query = null, onRowClick = null) => {
+    const request = indexedDB.open(dbName);
     request.onsuccess = (event) => {
         const db = event.target.result;
-        const transaction = db.transaction(storeName, 'readonly');
-        const store = transaction.objectStore(storeName);
-
+        const store = db.transaction(storeName, 'readonly').objectStore(storeName);
         const getAllRequest = store.getAll();
         getAllRequest.onsuccess = (event) => {
             let records = event.target.result;
-            console.log(records);
-
             if (query) {
-                records = records.filter(record => {
-                    const recordValue = record[query.index];
-                    const queryValue = query.value;
-                    return recordValue !== undefined && String(recordValue) === String(queryValue);
-                });
+                records = records.filter(r =>
+                    r[query.index] !== undefined && String(r[query.index]) === String(query.value)
+                );
             }
-
+            const container = document.getElementById(containerId);
             if (records.length === 0) {
-                const container = document.getElementById(containerId);
-                container.innerHTML = '<p>No records found.</p>';
+                container.innerHTML = '<p class="empty-msg">No records found.</p>';
                 return;
             }
-
-            createTable(records, columns, containerId);
+            _initToggle(records, columns, containerId, onRowClick);
         };
     };
 };
 
-// Function to create the table
-const createTable = (records, columns, containerId) => {
+// ─── Toggle UI ───────────────────────────────────────────────────────────────
+
+const _initToggle = (records, columns, containerId, onRowClick) => {
+    const container = document.getElementById(containerId);
+    const parent = container.parentElement;
+
+    // Remove existing toggle if re-rendered
+    parent.querySelector('.view-toggle')?.remove();
+
+    const toggle = document.createElement('div');
+    toggle.classList.add('view-toggle');
+
+    const tableBtn = document.createElement('button');
+    tableBtn.classList.add('toggle-btn');
+    tableBtn.innerHTML = '<i class="fas fa-table"></i> Table';
+
+    const cardBtn = document.createElement('button');
+    cardBtn.classList.add('toggle-btn');
+    cardBtn.innerHTML = '<i class="fas fa-th-large"></i> Cards';
+
+    toggle.appendChild(tableBtn);
+    toggle.appendChild(cardBtn);
+    parent.insertBefore(toggle, container);
+
+    const switchView = (view) => {
+        localStorage.setItem('preferred_view', view);
+        tableBtn.classList.toggle('active', view === 'table');
+        cardBtn.classList.toggle('active', view === 'card');
+        if (view === 'table') {
+            createTable(records, columns, containerId, onRowClick);
+        } else {
+            createCards(records, columns, containerId, onRowClick);
+        }
+    };
+
+    tableBtn.onclick = () => switchView('table');
+    cardBtn.onclick  = () => switchView('card');
+    switchView(localStorage.getItem('preferred_view') || 'table');
+};
+
+// ─── Table view ───────────────────────────────────────────────────────────────
+
+const createTable = (records, columns, containerId, onRowClick = null) => {
     const table = document.createElement('table');
     table.id = `${containerId}Table`;
     table.classList.add('styled-table');
 
+    // Header
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    columns.forEach((column) => {
+    columns.forEach(col => {
         const th = document.createElement('th');
-        th.textContent = column.charAt(0).toUpperCase() + column.slice(1);
+        th.textContent = _colLabel(col);
         headerRow.appendChild(th);
     });
-
-    const editTh = document.createElement('th');
-    editTh.textContent = 'Actions';
-    headerRow.appendChild(editTh);
+    const actionTh = document.createElement('th');
+    actionTh.textContent = 'Actions';
+    headerRow.appendChild(actionTh);
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
+    // Body
     const tbody = document.createElement('tbody');
-    records.forEach((record) => {
+    records.forEach(record => {
         const row = document.createElement('tr');
-        columns.forEach((col) => {
-            const cell = document.createElement('td');
-            cell.setAttribute('data-label', col.charAt(0).toUpperCase() + col.slice(1));
+        if (onRowClick) {
+            row.classList.add('clickable-row');
+            row.addEventListener('click', (e) => {
+                if (!e.target.closest('button')) onRowClick(record);
+            });
+        }
 
-            if (col === "image_url" && record.image_url) {  
+        columns.forEach(col => {
+            const cell = document.createElement('td');
+            cell.setAttribute('data-label', _colLabel(col));
+            if (col === 'image_url' && record.image_url) {
                 const img = document.createElement('img');
-                img.alt = 'Loading image...';
-                img.style.width = '50px';
-                img.style.height = '50px';
-                img.style.objectFit = 'cover';
+                img.alt = 'Loading...';
                 cell.appendChild(img);
-            
-                let imageId = record.image_url;
-            
-                // Check if it's a Supabase URL and extract the filename
-                if (typeof imageId === "string" && imageId.startsWith("https://")) {
-                    try {
-                        const url = new URL(imageId);
-                        imageId = url.pathname.split("/").pop(); // Extract filename
-                    } catch (error) {
-                        console.error("Invalid Supabase URL:", imageId);
-                        img.alt = "Invalid URL";
-                        return;
-                    }
-                } 
-            
-                // If it's a number, convert it to an integer
-                if (!isNaN(imageId) && imageId !== "") {
-                    imageId = parseInt(imageId);
-                }
-            
-                // Fetch image from IndexedDB
-                renderImage("Images", imageId, img)
-                    .then((imageUrl) => {
-                        img.src = imageUrl;
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                        img.alt = "No image found";
-                    });
-            
+                _loadImage(record.image_url, img);
             } else {
-                cell.textContent = record[col] !== undefined ? record[col] : 'N/A';
+                cell.textContent = record[col] !== undefined ? record[col] : '—';
             }
             row.appendChild(cell);
         });
 
         const editCell = document.createElement('td');
         editCell.setAttribute('data-label', 'Actions');
-        const editButton = document.createElement('button');
-        editButton.textContent = 'Edit';
-        editButton.classList.add('edit-btn');
-        editButton.onclick = (event) => {
-            event.stopPropagation();
-            editRecord(record);
-        };
-        editCell.appendChild(editButton);
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.classList.add('edit-btn');
+        editBtn.onclick = (e) => { e.stopPropagation(); editRecord(record); };
+        editCell.appendChild(editBtn);
         row.appendChild(editCell);
 
         tbody.appendChild(row);
@@ -172,13 +173,74 @@ const createTable = (records, columns, containerId) => {
     container.appendChild(table);
 };
 
-// Function to edit a record
-const editRecord = (record) => {
-    // Store the record in localStorage
-    localStorage.setItem('edit_record', JSON.stringify(record));
+// ─── Card view ────────────────────────────────────────────────────────────────
 
-    // Redirect to the current URL with '/edit' appended to it
-    window.location.href = window.location.href + '/edit';
+const createCards = (records, columns, containerId, onRowClick = null) => {
+    const grid = document.createElement('div');
+    grid.classList.add('card-grid');
+
+    records.forEach(record => {
+        const card = document.createElement('div');
+        card.classList.add('record-card');
+        if (onRowClick) {
+            card.classList.add('clickable-card');
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('button')) onRowClick(record);
+            });
+        }
+
+        // Image thumbnail
+        if (columns.includes('image_url') && record.image_url) {
+            const imgWrapper = document.createElement('div');
+            imgWrapper.classList.add('card-img-wrapper');
+            const img = document.createElement('img');
+            img.alt = 'Loading...';
+            imgWrapper.appendChild(img);
+            card.appendChild(imgWrapper);
+            _loadImage(record.image_url, img);
+        }
+
+        // Fields
+        const fields = document.createElement('div');
+        fields.classList.add('card-fields');
+        columns.forEach(col => {
+            if (col === 'image_url') return;
+            const value = (record[col] !== undefined && record[col] !== '') ? record[col] : '—';
+            const field = document.createElement('div');
+            field.classList.add('card-field');
+            const label = document.createElement('span');
+            label.classList.add('card-label');
+            label.textContent = _colLabel(col);
+            const val = document.createElement('span');
+            val.classList.add('card-value');
+            val.textContent = value;
+            field.appendChild(label);
+            field.appendChild(val);
+            fields.appendChild(field);
+        });
+        card.appendChild(fields);
+
+        // Footer with edit button
+        const footer = document.createElement('div');
+        footer.classList.add('card-footer');
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.classList.add('edit-btn');
+        editBtn.onclick = (e) => { e.stopPropagation(); editRecord(record); };
+        footer.appendChild(editBtn);
+        card.appendChild(footer);
+
+        grid.appendChild(card);
+    });
+
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    container.appendChild(grid);
 };
 
-// Table styling is handled by style.css (.styled-table)
+// ─── Edit record ─────────────────────────────────────────────────────────────
+
+const editRecord = (record) => {
+    localStorage.setItem('edit_record', JSON.stringify(record));
+    window.location.href = window.location.href + '/edit';
+};

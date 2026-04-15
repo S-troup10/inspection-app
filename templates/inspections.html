@@ -16,18 +16,19 @@
 <script src="/static/js/table.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        generateTable('HV-storage', 'Inspection_Header', 'table', ['title', 'date', 'description', 'image_url', 'inspection_id']);
-    });
-
-    document.getElementById('table').addEventListener('click', function(event) {
-        const row = event.target.closest('tr');
-        if (row && !event.target.closest('button.edit-btn')) {
-            const inspectionId = row.querySelectorAll('td')[row.cells.length - 2].textContent;
-            if (inspectionId) {
-                localStorage.setItem('current_inspection_id', inspectionId);
-                window.location.href = '/inspection-Details';
+        generateTable(
+            'HV-storage',
+            'Inspection_Header',
+            'table',
+            ['title', 'date', 'description', 'image_url', 'inspection_id'],
+            null,
+            (record) => {
+                if (record.inspection_id) {
+                    localStorage.setItem('current_inspection_id', record.inspection_id);
+                    window.location.href = '/inspection-Details';
+                }
             }
-        }
+        );
     });
 </script>
 {% endblock %}
