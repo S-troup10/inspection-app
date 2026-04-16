@@ -182,7 +182,7 @@ def generate_report(inspection_id):
 
         risk_type = customer.get('risk_type')
         inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
-        inspection_details = filter_by_time(calculate_risk(inspection_details_raw, risk_type))
+        inspection_details = sorted(calculate_risk(inspection_details_raw, risk_type), key=lambda x: x['detail_id'])
 
         # Step 2: Prepare report data
         logo = 'https://zmusspsqfcmjpqnwkpmx.supabase.co/storage/v1/object/public/images//hv.png'
