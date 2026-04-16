@@ -42,6 +42,7 @@ def allowed_file(filename):
 def add_security_headers(response):
     if request.path == '/static/js/service-worker.js':
         response.headers['Service-Worker-Allowed'] = '/'
+        response.headers['Cache-Control'] = 'no-store'
     return response
 
 

@@ -207,12 +207,16 @@ const updateImageRecord = (imageRecord, image_id, image_url) => {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction('Images', 'readwrite');
         const store = transaction.objectStore('Images');
+        const oldKey = imageRecord.image_id;
         imageRecord.image_id = image_id;
         imageRecord.image_url = image_url;
-        const request = store.put(imageRecord);
-
-        request.onsuccess = () => resolve();
-        request.onerror = (event) => reject(`Error updating image record: ${event.target.error}`);
+        const delReq = store.delete(oldKey);
+        delReq.onsuccess = () => {
+            const putReq = store.put(imageRecord);
+            putReq.onsuccess = () => resolve();
+            putReq.onerror = (evt) => reject(`Error updating image record: ${evt.target.error}`);
+        };
+        delReq.onerror = (evt) => reject(`Error deleting old image record: ${evt.target.error}`);
     });
 };
 
@@ -229,14 +233,8 @@ const updateRowInIndexedDB = (table, row) => {
 
 
 const syncDataToServer = async (table, data) => {
-    try {
-        const { error } = await _supabase.from(table).upsert(data);
-        if (error) {
-            console.error(`Error syncing data for table ${table}:`, error);
-        }
-    } catch (err) {
-        console.error(`Failed to sync ${table} data:`, err);
-    }
+    const { error } = await _supabase.from(table).upsert(data);
+    if (error) throw new Error(`Failed to sync ${table}: ${error.message}`);
 };
 
 
@@ -259,9 +257,21 @@ const sync_server = async () => {
                 const transaction = db.transaction([table, 'Images'], 'readwrite');
                 const store = transaction.objectStore(table);
                 const imageStore = transaction.objectStore('Images');
+                const pk = getPrimaryKeyField(table);
 
                 for (let record of data) {
-                    store.put(record);
+                    const getReq = store.get(record[pk]);
+                    getReq.onsuccess = (e) => {
+                        const local = e.target.result;
+                        // Only overwrite local if:
+                        // - No local record exists, OR
+                        // - Local has no last_modified (legacy record), OR
+                        // - Server record has a timestamp AND it's same or newer than local
+                        if (!local || !local.last_modified ||
+                            (record.last_modified && new Date(record.last_modified) >= new Date(local.last_modified))) {
+                            store.put(record);
+                        }
+                    };
 
                     if (record.image_url && record.image_url.startsWith(SUPABASE_URL)) {
                         const imageId = record.image_url.split('/').pop();

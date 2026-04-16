@@ -1,4 +1,4 @@
-const CACHE_NAME = "hvEngineers-cache-v1";
+const CACHE_NAME = "hvEngineers-cache-v2";
 
 const EXCLUDED_ROUTES = [
     '/select-Inspections',
@@ -44,6 +44,7 @@ self.addEventListener('install', (event) => {
             return cache.addAll(ITEMS_TO_CACHE);
         })
     );
+    self.skipWaiting();
 });
 
 // Activate Event
@@ -59,6 +60,7 @@ self.addEventListener("activate", (event) => {
             );
         }).then(() => {
             console.log("Cache updated");
+            return self.clients.claim();
         })
     );
 });

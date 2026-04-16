@@ -41,7 +41,7 @@
     const storeName = "Customer";
 
     function getCurrentDateTime() {
-        return new Date().toISOString().replace("T", " ").split(".")[0];
+        return new Date().toISOString();
     }
 
     const customerData = JSON.parse(localStorage.getItem("edit_record"));
