@@ -8,10 +8,17 @@
         /* Set page to landscape */
         @page {
             size: A4 landscape;
-            margin: 10mm 20mm 22mm 20mm;
+            margin: 10mm 20mm 20mm 20mm;
 
             @bottom-center {
-                content: element(footer);
+                content: "Email: enquiries@HVEngineers.com.au | Report by HV Engineers Pty Ltd | Date: {{ inspection_header.date }}\APete: 0419 228 120 | Richard: 0404 280 928 | {{ num }}";
+                font-size: 11px;
+                color: #004d99;
+                font-weight: bold;
+                border-top: 2px solid #004d99;
+                padding-top: 4px;
+                white-space: pre;
+                text-align: center;
                 width: 100%;
             }
         }
@@ -124,26 +131,6 @@
             background-color: #ffffff; /* White background */
         }
 
-        /* Footer — running element, placed in @bottom-center margin box by WeasyPrint */
-        .footer {
-            position: running(footer);
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            padding-top: 5px;
-            border-top: 2px solid #004d99;
-            width: 100%;
-        }
-
-        .footer .contact-info {
-            font-weight: bold;
-            color: #004d99;
-        }
-        
-        .footer .company-info {
-            margin-top: 5px; /* Space between contact and company details */
-        }
-
         .content {
             flex: 1;
         }
@@ -194,14 +181,5 @@
         </div>
     </div>
 
-    <!-- Footer (Same as Title Page) -->
-    <div class="footer">
-        <div class="contact-info">
-            <span>Email: enquiries@HVEngineers.com.au | Report by HV Engineers Pty Ltd | Date: {{inspection_header.date}}</span>
-        </div>
-        <div class="company-info">
-            <span>Pete: 0419 228 120 | Richard: 0404 280 928 | {{num}}</span>
-        </div>
-    </div>
 </body>
 </html>
