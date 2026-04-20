@@ -202,7 +202,7 @@ def generate_report(inspection_id):
         pages = [render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}')]
 
         for i, chunk in enumerate(row_chunks, start=2):
-            pages.append(render_template('report-table.html', **report_data, rows=chunk, num=f'page {i} of {total_pages}'))
+            pages.append(render_template('report-table.html', **{**report_data, 'rows': chunk}, num=f'page {i} of {total_pages}'))
 
         for i, row in enumerate(inspection_details, start=2 + len(row_chunks)):
             pages.append(render_template('report-detail.html', row=row, **report_data, num=f'page {i} of {total_pages}'))
