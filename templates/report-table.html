@@ -8,7 +8,12 @@
         /* Set page to landscape */
         @page {
             size: A4 landscape;
-            margin: 10mm 20mm 30mm 20mm;
+            margin: 10mm 20mm 22mm 20mm;
+
+            @bottom-center {
+                content: element(footer);
+                width: 100%;
+            }
         }
 
         body {
@@ -119,21 +124,15 @@
             background-color: #ffffff; /* White background */
         }
 
-        /* Footer */
+        /* Footer — running element, placed in @bottom-center margin box by WeasyPrint */
         .footer {
-            position: fixed;
-            bottom: 10mm;
-            left: 0;
-            right: 0;
+            position: running(footer);
             text-align: center;
             font-size: 12px;
             color: #666;
             padding-top: 5px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             border-top: 2px solid #004d99;
-            background-color: #fff; /* Ensure footer has a white background */
+            width: 100%;
         }
 
         .footer .contact-info {
@@ -145,10 +144,8 @@
             margin-top: 5px; /* Space between contact and company details */
         }
 
-        /* Ensure content area doesn't overlap footer */
         .content {
-            flex: 1; /* Takes all available space except for footer */
-            padding-bottom: 25mm; /* Reserve space so table rows clear the fixed footer */
+            flex: 1;
         }
     </style>
 </head>
