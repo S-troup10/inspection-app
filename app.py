@@ -195,16 +195,13 @@ def generate_report(inspection_id):
             "logo": logo
         }
 
-        ROWS_PER_TABLE_PAGE = 15
-        row_chunks = [inspection_details[i:i+ROWS_PER_TABLE_PAGE] for i in range(0, len(inspection_details), ROWS_PER_TABLE_PAGE)]
-        total_pages = 1 + len(row_chunks) + len(inspection_details)
+        total_pages = len(inspection_details) + 2
+        pages = [
+            render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}'),
+            render_template('report-table.html', **report_data, num=f'page 2 of {total_pages}')
+        ]
 
-        pages = [render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}')]
-
-        for i, chunk in enumerate(row_chunks, start=2):
-            pages.append(render_template('report-table.html', **{**report_data, 'rows': chunk}, num=f'page {i} of {total_pages}'))
-
-        for i, row in enumerate(inspection_details, start=2 + len(row_chunks)):
+        for i, row in enumerate(inspection_details, start=3):
             pages.append(render_template('report-detail.html', row=row, **report_data, num=f'page {i} of {total_pages}'))
 
         # Step 3: Generate PDF
