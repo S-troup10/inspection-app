@@ -1,4 +1,4 @@
-const CACHE_NAME = "hvEngineers-cache-v2";
+const CACHE_NAME = "hvEngineers-cache-v3";
 
 const EXCLUDED_ROUTES = [
     '/select-Inspections',
@@ -9,7 +9,10 @@ const EXCLUDED_ROUTES = [
     '/rest/v1/Customer?select=*',
     '/rest/v1/Inspection_Header?select=*', 
     '/api/init',
-    '/vertify'
+    '/vertify',
+    '/email-status',
+    '/email-resend',
+    '/health'
 
 
 

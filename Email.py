@@ -149,10 +149,10 @@ def _alert_allowed(title):
     now = time.monotonic()
     with _alert_lock:
         if now - _alert_times.get(title, -1e9) < ALERT_COOLDOWN:
-            return False, str(e)
+            return False
         _alert_window[:] = [t for t in _alert_window if now - t < 3600]
         if len(_alert_window) >= ALERT_MAX_PER_HOUR:
-            return False, str(e)
+            return False
         _alert_times[title] = now
         _alert_window.append(now)
         return True
@@ -254,4 +254,4 @@ def send_Email(pdf, excel, recipient_email, customer):
             f"Report email FAILED for {customer}",
             f"Recipient: {recipient_email}\nError: {e}\n\n{traceback.format_exc()}",
         )
-        return False, str(e)
+        return False
