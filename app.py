@@ -16,15 +16,36 @@ import gc
 import io
 import local
 import Email
+import report_jobs
+import logging
+import os
+import re
+import sys
+import base64
+from werkzeug.exceptions import HTTPException
+
+logging.basicConfig(
+    level=logging.INFO, stream=sys.stdout,
+    format='%(asctime)s %(levelname)s [%(name)s] %(message)s')
+logger = logging.getLogger('inspection.app')
+
+# Optional Sentry error tracking (set SENTRY_DSN on Render to enable)
+if os.environ.get('SENTRY_DSN'):
+    try:
+        import sentry_sdk
+        sentry_sdk.init(dsn=os.environ['SENTRY_DSN'], traces_sample_rate=0.0)
+        logger.info('Sentry enabled')
+    except Exception:
+        logger.exception('Could not initialise Sentry')
 
 app = Flask(__name__)
-app.secret_key = 'ddd'
+app.secret_key = os.environ.get('SECRET_KEY', 'ddd')
 
 app.config['UPLOAD_FOLDER'] = './static/cache'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 3000 * 3000  # 100 MB limit
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
-PASSWORD = 'HV3G849'
+PASSWORD = os.environ.get('APP_PASSWORD', 'HV3G849')
 
 
 def print_memory_usage():
@@ -44,6 +65,82 @@ def add_security_headers(response):
         response.headers['Service-Worker-Allowed'] = '/'
         response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def shrink_data_uri(uri, max_px=1600, quality=82, min_bytes=300_000):
+    """Downscale a large base64 image for PDF rendering only (cuts memory and
+    file size; the image is displayed at the same size on the page).
+    Returns the original value untouched if it isn't a big data URI or on error."""
+    try:
+        if not uri or not isinstance(uri, str) or not uri.startswith('data:image') or ',' not in uri:
+            return uri
+        raw = base64.b64decode(uri.split(',', 1)[1])
+        if len(raw) < min_bytes:
+            return uri
+        img = Image.open(BytesIO(raw))
+        exif = img.info.get('exif')
+        has_alpha = img.mode in ('RGBA', 'LA') or 'transparency' in img.info
+        if max(img.size) > max_px:
+            img.thumbnail((max_px, max_px), Image.LANCZOS)
+        out = BytesIO()
+        if has_alpha:
+            img.convert('RGBA').save(out, 'PNG', optimize=True)
+            mime = 'image/png'
+        else:
+            kwargs = {'quality': quality, 'optimize': True}
+            if exif:
+                kwargs['exif'] = exif  # keep orientation tag so rendering is unchanged
+            img.convert('RGB').save(out, 'JPEG', **kwargs)
+            mime = 'image/jpeg'
+        if out.tell() >= len(raw):
+            return uri
+        return f"data:{mime};base64,{base64.b64encode(out.getvalue()).decode()}"
+    except Exception:
+        logger.warning('Image shrink failed; using original', exc_info=True)
+        return uri
+
+
+@app.route('/health')
+def health():
+    db_ok = local.db_healthy()
+    body = {
+        'status': 'ok' if db_ok else 'degraded',
+        'database': db_ok,
+        'email_transport': 'resend' if Email.RESEND_API_KEY else 'smtp',
+    }
+    return jsonify(body), (200 if db_ok else 503)
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    if isinstance(e, HTTPException):
+        return e  # normal 404/400 etc. are not alerts
+    logger.exception('Unhandled error on %s %s', request.method, request.path)
+    Email.send_alert_async(f'Unhandled error: {request.method} {request.path}',
+                           traceback.format_exc())
+    return ('Something went wrong. The error has been logged and the admin notified.', 500)
+
+
+@app.route('/email-status/<job_id>')
+def email_status(job_id):
+    if not report_jobs.valid_id(job_id):
+        return jsonify({'status': 'unknown'}), 404
+    meta = report_jobs.get_status(job_id)
+    if not meta:
+        return jsonify({'status': 'unknown'}), 404
+    return jsonify({'status': meta.get('status'), 'error': meta.get('error'),
+                    'email': meta.get('email')})
+
+
+@app.route('/email-resend/<job_id>', methods=['POST'])
+def email_resend(job_id):
+    if not report_jobs.valid_id(job_id):
+        return jsonify({'ok': False, 'message': 'Invalid job'}), 404
+    ok, msg = report_jobs.resend(job_id)
+    return jsonify({'ok': ok, 'message': msg}), (200 if ok else 409)
 
 
 @app.route('/api/init', methods=['POST'])
@@ -162,65 +259,75 @@ def generate_report(inspection_id):
             "issued_by": issued_by
         }
 
+        email = (request.form.get('email') or '').strip()
+        if not EMAIL_RE.match(email):
+            logger.warning('Rejected invalid recipient email: %r', email)
+            return ('Invalid email address. Please go back and enter a valid email.', 400)
+
         add = request.form.get('add')
         if add:
-            try:
-                local.insert('Revisions', revisions_data)
-                print("Data inserted successfully.")
-            except Exception as e:
-                print("Error during insert:", e)
+            if local.insert('Revisions', revisions_data):
+                logger.info('Revision inserted for inspection %s', inspection_id)
+            else:
+                logger.error('Revision insert failed for inspection %s', inspection_id)
 
-        # Step 1: Fetch all data
-        inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id})
+        # Step 1: Fetch all data (raise on DB errors instead of treating them as "no data")
+        inspection_header = local.fetch('Inspection_Header', {'inspection_id': inspection_id},
+                                        raise_on_error=True)
         if not inspection_header:
             return redirect('/select-Inspections')
         inspection_header = inspection_header[0]
 
-        customer_data = local.fetch('Customer', {'customer_id': inspection_header.get('customer_id')})
+        customer_data = local.fetch('Customer', {'customer_id': inspection_header.get('customer_id')},
+                                    raise_on_error=True)
         if not customer_data:
             return "Customer not found", 404
         customer = customer_data[0]
 
         risk_type = customer.get('risk_type')
-        inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id})
+        inspection_details_raw = local.fetch('Inspection_Details', {'inspection_id': inspection_id},
+                                             raise_on_error=True)
         inspection_details = sorted(calculate_risk(inspection_details_raw, risk_type), key=lambda x: x['detail_id'])
 
         # Step 2: Prepare report data
         logo = 'https://zmusspsqfcmjpqnwkpmx.supabase.co/storage/v1/object/public/images//hv.png'
         report_data = {
             "customer": customer,
-            "inspection_header": inspection_header,
+            "inspection_header": dict(inspection_header,
+                                      image_url=shrink_data_uri(inspection_header.get('image_url'))),
             "rows": inspection_details,
-            "revisions": local.fetch('Revisions', {'inspection_id': inspection_id}),
+            "revisions": local.fetch('Revisions', {'inspection_id': inspection_id}, raise_on_error=True),
             "logo": logo
         }
 
         total_pages = len(inspection_details) + 2
-        pages = [
-            render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}'),
-            render_template('report-table.html', **report_data, num=f'page 2 of {total_pages}')
-        ]
+        logger.info('Generating report for inspection %s (%d pages)', inspection_id, total_pages)
 
-        for i, row in enumerate(inspection_details, start=3):
-            pages.append(render_template('report-detail.html', row=row, **report_data, num=f'page {i} of {total_pages}'))
-
-        # Step 3: Generate PDF
-        pdf_files = []
-        for page_html in pages:
-            pdf_bytes = HTML(string=page_html).write_pdf(resolution=72)
-            pdf_files.append(BytesIO(pdf_bytes))
-
-        # Step 4: Merge PDFs
+        # Steps 3+4: render each page to PDF and merge as we go, so only one
+        # page's HTML/PDF is held in memory at a time
         merged_pdf = PdfMerger()
-        for pdf in pdf_files:
-            pdf.seek(0)
-            merged_pdf.append(pdf)
+
+        def add_page(page_html):
+            pdf_bytes = HTML(string=page_html).write_pdf(resolution=72)
+            merged_pdf.append(BytesIO(pdf_bytes))
+
+        add_page(render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}'))
+        add_page(render_template('report-table.html', **report_data, num=f'page 2 of {total_pages}'))
+        for i, row in enumerate(inspection_details, start=3):
+            small_row = dict(row, image_url=shrink_data_uri(row.get('image_url')))
+            add_page(render_template('report-detail.html', row=small_row, **report_data,
+                                     num=f'page {i} of {total_pages}'))
+            del small_row
+            if i % 10 == 0:
+                gc.collect()
 
         final_pdf_buffer = BytesIO()
         merged_pdf.write(final_pdf_buffer)
-        final_pdf_buffer.seek(0)
         merged_pdf.close()
-        print("PDF merged successfully.")
+        final_pdf_bytes = final_pdf_buffer.getvalue()
+        del final_pdf_buffer
+        logger.info('PDF merged successfully (%d bytes)', len(final_pdf_bytes))
+        print_memory_usage()
 
         inspection_date = inspection_header.get('date')
 
@@ -231,27 +338,23 @@ def generate_report(inspection_id):
             new_row.update(row)
             data_to_pass_to_excel.append(new_row)
 
-        excel = generate_excel(data_to_pass_to_excel)
+        excel_bytes = generate_excel(data_to_pass_to_excel).getvalue()
 
-        # Step 6: Send email in background
-        email = request.form.get('email')
+        # Step 6: queue the email (persisted + retryable) and return immediately
         customer_name = customer.get('name')
-        final_pdf_bytes = final_pdf_buffer.getvalue()
+        job_id = report_jobs.create_job(email, customer_name, final_pdf_bytes, excel_bytes)
 
-        def send_email_task():
-            Email.send_Email(final_pdf_bytes, excel, email, customer_name)
-
-        email_thread = Thread(target=send_email_task)
-        email_thread.start()
-
-        del excel, customer
+        del customer, excel_bytes, final_pdf_bytes
         gc.collect()
 
-        return render_template('report_ready.html', email=email)
+        return render_template('report_ready.html', email=email, job_id=job_id)
 
-    except Exception as e:
-        traceback.print_exc()
-        return redirect('/')
+    except Exception:
+        logger.exception('Report generation failed for inspection %s', inspection_id)
+        Email.send_alert_async(f'Report generation failed (inspection {inspection_id})',
+                               traceback.format_exc())
+        return ('Sorry, the report could not be generated. The error has been logged and '
+                'the admin notified. <a href="/">Back to dashboard</a>', 500)
 
 
 def calculate_risk(data, risk_type):

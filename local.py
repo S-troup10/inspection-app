@@ -1,4 +1,6 @@
 import os
+import logging
+import time
 from supabase import create_client, Client
 import gc
 
@@ -6,115 +8,118 @@ import tempfile
 import base64
 import os
 # Set your Supabase credentials here
-SUPABASE_URL = 'https://zmusspsqfcmjpqnwkpmx.supabase.co'
-SUPABASE_API_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdXNzcHNxZmNtanBxbndrcG14Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTUwNDcwNiwiZXhwIjoyMDU1MDgwNzA2fQ.Fl9y2FJhD09xBadglE9hzv5tFoGCxAU9_hRXZnePDg0'
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://zmusspsqfcmjpqnwkpmx.supabase.co')
+SUPABASE_API_KEY = os.environ.get('SUPABASE_API_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdXNzcHNxZmNtanBxbndrcG14Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTUwNDcwNiwiZXhwIjoyMDU1MDgwNzA2fQ.Fl9y2FJhD09xBadglE9hzv5tFoGCxAU9_hRXZnePDg0')
+
+logger = logging.getLogger("inspection.db")
 
 # Create a Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
 
+def _with_retry(fn, what, attempts=3):
+    """Run fn(), retrying transient failures with exponential backoff."""
+    last = None
+    for i in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last = e
+            logger.warning("%s failed (attempt %d/%d): %s", what, i, attempts, e)
+            if i < attempts:
+                time.sleep(0.5 * 2 ** (i - 1))
+    raise last
+
+
 def insert(table_name, data):
-    """
-    Inserts a record into the specified table with automatic handling for `customer_id` and `last_modified`.
-    """
+    """Insert a record. Returns True on success, False on failure (logged)."""
     try:
-        response = supabase.table(table_name).insert(data).execute()
-        # Check if insertion is successful
-        
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        _with_retry(lambda: supabase.table(table_name).insert(data).execute(),
+                    f"insert into {table_name}")
+        return True
+    except Exception:
+        logger.exception("insert into %s failed", table_name)
         return False
 
-def update(table_name, data, conditions):
-    """
-    Updates records in the specified table based on conditions.
-    """
-    try:
-        response = supabase.table(table_name).update(data).match(conditions).execute()
-        
-    except Exception as e:
-        print(f"An error occurred: {e}")
 
-def fetch(table_name, conditions=None, exclude_image_url=False):
-    """
-    Fetches records from the specified table, optionally filtered by conditions.
-    If exclude_image_url is True, the image_url column will be excluded.
-    """
+def update(table_name, data, conditions):
+    """Update matching records. Returns True on success, False on failure (logged)."""
     try:
-        # Construct the select query
-        
+        _with_retry(lambda: supabase.table(table_name).update(data).match(conditions).execute(),
+                    f"update {table_name}")
+        return True
+    except Exception:
+        logger.exception("update of %s failed", table_name)
+        return False
+
+
+_LIGHT_COLUMNS = {
+    "Customer": "customer_id, name, site",
+    "Inspection_Header": "inspection_id, description, summary, customer_id, date, title",
+    "Inspection_Details": "detail_id, inspection_id, area, item, action_required, probability, consequence, time_ranking, unit, observations, recommendations, picture_caption",
+}
+
+
+def fetch(table_name, conditions=None, exclude_image_url=False, raise_on_error=False):
+    """
+    Fetch records, optionally filtered by conditions (retries transient errors).
+    If exclude_image_url is True, the image_url column is excluded.
+    On failure returns [] (logged) unless raise_on_error=True, in which case the
+    error propagates so callers don't mistake an outage for "no data".
+    """
+    def _run():
         if exclude_image_url:
-            
-            columns_to_select = {
-            "Customer": "customer_id, name, site",
-            "Inspection_Header": "inspection_id, description, summary, customer_id, date, title",
-            "Inspection_Details": "detail_id, inspection_id, area, item, action_required, probability, consequence, time_ranking, unit, observations, recommendations, picture_caption",
-        }
-            query = supabase.table(table_name).select(columns_to_select[table_name])
-            
+            query = supabase.table(table_name).select(_LIGHT_COLUMNS[table_name])
         else:
             query = supabase.table(table_name).select("*")
-        
-        # Apply conditions if provided
         if conditions:
             query = query.match(conditions)
-        
-        response = query.execute()
-        
-        # Return only the data part of the response
-        return response.data
+        return query.execute().data
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    try:
+        return _with_retry(_run, f"fetch {table_name}")
+    except Exception:
+        logger.exception("fetch from %s failed", table_name)
+        if raise_on_error:
+            raise
         return []
 
 
-    
+def storage_put(path, data, content_type, bucket="report"):
+    """Upload bytes (overwriting). Raises on failure."""
+    _with_retry(lambda: supabase.storage.from_(bucket).upload(
+        path, data, {"content-type": content_type, "upsert": "true"}),
+        f"upload {path}")
+    return f"{SUPABASE_URL}/storage/v1/object/public/{bucket}/{path}"
 
 
+def storage_get(path, bucket="report"):
+    """Download bytes. Raises on failure."""
+    return _with_retry(lambda: supabase.storage.from_(bucket).download(path),
+                       f"download {path}")
 
-def upload_pdf_to_supabase(pdf_bytes: bytes, file_path: str) -> str:
+
+def db_healthy():
+    try:
+        supabase.table("Customer").select("customer_id").limit(1).execute()
+        return True
+    except Exception as e:
+        logger.error("DB health check failed: %s", e)
+        return False
+
+
+def upload_pdf_to_supabase(data: bytes, file_path: str, content_type: str = "application/pdf") -> str:
     """
-    Upload the given PDF to Supabase storage and return the public URL.
-
-    Args:
-        pdf_bytes (bytes): The PDF content in bytes.
-        file_path (str): The path where the PDF should be stored in Supabase storage.
-
-    Returns:
-        str: The public URL of the uploaded PDF, or an error message if upload fails.
+    Upload bytes to the 'report' bucket and return the public URL,
+    or an error string (not starting with http) if the upload fails.
     """
     try:
-        # Create a temporary file with a .pdf extension
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-            tmp_file.write(pdf_bytes)
-            temp_path = tmp_file.name  # Store path before closing
-
-        # Upload the file to Supabase Storage
-        with open(temp_path, 'rb') as file:
-            response = supabase.storage.from_("report").upload(file_path, file, {"content-type": "application/pdf"})
-            print(response)
-        # Remove the temporary file after upload
-        os.remove(temp_path)
-
-        # Check response using correct attributes
-        if hasattr(response, 'error') and response.error:
-            print(f"Failed to upload PDF to Supabase: {response.error}")
-            return f"Failed to upload PDF: {response.error}"
-
-        # Get the public URL of the uploaded PDF
-        pdf_url = f"{SUPABASE_URL}/storage/v1/object/public/report/{file_path}"
-        print(f"PDF uploaded successfully to Supabase. URL: {pdf_url}")
-        return pdf_url
-
+        url = storage_put(file_path, data, content_type)
+        logger.info("Uploaded %s (%d bytes)", file_path, len(data))
+        return url
     except Exception as e:
-        print(f"Error uploading PDF to Supabase: {e}")
-        return f"Error uploading PDF: {str(e)}"
-
-
-
-
-
+        logger.exception("Error uploading %s", file_path)
+        return f"Error uploading file: {e}"
 
 
 BUCKET_NAME = "images"
