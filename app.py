@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, jsonify, send_file
 from PIL import Image
 from weasyprint import HTML
-from PyPDF2 import PdfMerger
+from PyPDF2 import PdfMerger, PdfReader
 from io import BytesIO
 from collections import OrderedDict, defaultdict
 from threading import Thread
@@ -300,20 +300,29 @@ def generate_report(inspection_id):
             "logo": logo
         }
 
-        total_pages = len(inspection_details) + 2
-        logger.info('Generating report for inspection %s (%d pages)', inspection_id, total_pages)
+        logger.info('Generating report for inspection %s (%d detail pages)', inspection_id, len(inspection_details))
 
         # Steps 3+4: render each page to PDF and merge as we go, so only one
         # page's HTML/PDF is held in memory at a time
         merged_pdf = PdfMerger()
 
+        def render_pdf(page_html):
+            return HTML(string=page_html).write_pdf(resolution=72)
+
+        # The summary table can run over more than one page, so render it first
+        # (with a placeholder total) to learn how many pages it takes.
+        table_pdf = render_pdf(render_template('report-table.html', **report_data, num='page 2 of ?'))
+        table_pages = len(PdfReader(BytesIO(table_pdf)).pages)
+        total_pages = 1 + table_pages + len(inspection_details)
+        table_pdf = render_pdf(render_template('report-table.html', **report_data,
+                                               num=f'page 2 of {total_pages}'))
+
         def add_page(page_html):
-            pdf_bytes = HTML(string=page_html).write_pdf(resolution=72)
-            merged_pdf.append(BytesIO(pdf_bytes))
+            merged_pdf.append(BytesIO(render_pdf(page_html)))
 
         add_page(render_template('report-title.html', **report_data, num=f'page 1 of {total_pages}'))
-        add_page(render_template('report-table.html', **report_data, num=f'page 2 of {total_pages}'))
-        for i, row in enumerate(inspection_details, start=3):
+        merged_pdf.append(BytesIO(table_pdf))
+        for i, row in enumerate(inspection_details, start=2 + table_pages):
             small_row = dict(row, image_url=shrink_data_uri(row.get('image_url')))
             add_page(render_template('report-detail.html', row=small_row, **report_data,
                                      num=f'page {i} of {total_pages}'))

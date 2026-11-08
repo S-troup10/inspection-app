@@ -78,6 +78,14 @@
             margin: 2px 0;
         }
 
+        .scope {
+            font-size: 10px;
+            line-height: 1.3;
+            color: #666;
+            margin: 6px 0 0 0;
+            text-align: left;
+        }
+
         /* Inspection Table */
         .inspection-table {
             margin-top: 20px;
@@ -90,6 +98,7 @@
             font-size: 11px;
             margin-top: 10px;
             table-layout: fixed; /* Forces columns to respect defined widths */
+            box-sizing: border-box;
         }
 
         .table tr {
@@ -97,6 +106,7 @@
         }
 
         .table th, .table td {
+            box-sizing: border-box;
             border: 1px solid #ccc;
             padding: 5px;
             text-align: left;
@@ -114,14 +124,14 @@
         }
         
 
-        .table th:nth-child(1), .table td:nth-child(1) { width: 10%; } /* Area */
-.table th:nth-child(2), .table td:nth-child(2) { width: 9%; } /* Unit */
+        .table th:nth-child(1), .table td:nth-child(1) { width: 11%; } /* Area */
+.table th:nth-child(2), .table td:nth-child(2) { width: 8%; } /* Unit */
 .table th:nth-child(3), .table td:nth-child(3) { width: 10%; } /* Item */
-.table th:nth-child(4), .table td:nth-child(4) { width: 20%; } /* Observations */
-.table th:nth-child(5), .table td:nth-child(5) { width: 20%; } /* Recommendations */
+.table th:nth-child(4), .table td:nth-child(4) { width: 22%; } /* Observations */
+.table th:nth-child(5), .table td:nth-child(5) { width: 21%; } /* Recommendations */
 .table th:nth-child(6), .table td:nth-child(6) { width: 8%; } /* Probability */
 .table th:nth-child(7), .table td:nth-child(7) { width: 9%; } /* Consequence */
-.table th:nth-child(8), .table td:nth-child(8) { width: 8%; } /* Time Ranking */
+.table th:nth-child(8), .table td:nth-child(8) { width: 9%; } /* Time Ranking */
         
 
 .table tbody tr:nth-child(odd) {
@@ -146,9 +156,10 @@
             <div class="title">Summary of Findings</div>
             <div class="customer-info">
                 <h2>{{ customer.name }}</h2>
-                <p class="description">{{ inspection_header.description }}</p>
             </div>
         </div>
+
+        <p class="scope">{{ inspection_header.description }}</p>
 
         <!-- Inspection Summary Table -->
         <div class="inspection-table">
